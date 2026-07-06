@@ -11,7 +11,7 @@ public class Lancamento {
 
     public String descricao;
     public double valor;
-    public String tipo; // ENTRADA ou SAIDA
+    public String tipo; // Tipo do lançamento
     public String categoria;
     public String data;
     public String origem; // CELULAR ou RELOGIO
