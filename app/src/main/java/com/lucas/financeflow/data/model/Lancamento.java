@@ -10,6 +10,8 @@ public class Lancamento {
     public int id;
 
     public String descricao;
+    public String conta;
+    public String origemDestino;
     public double valor;
     public String tipo; // Tipo do lançamento
     public String categoria;
@@ -17,7 +19,7 @@ public class Lancamento {
     public String origem; // CELULAR ou RELOGIO
     public String syncStatus; // PENDENTE ou SINCRONIZADO
 
-    public Lancamento(String descricao, double valor, String tipo, String categoria, String data, String origem, String syncStatus) {
+    public Lancamento(String descricao, double valor, String tipo, String categoria, String data, String origem, String syncStatus, String origemDestino, String conta) {
         this.descricao = descricao;
         this.valor = valor;
         this.tipo = tipo;
@@ -25,5 +27,7 @@ public class Lancamento {
         this.data = data;
         this.origem = origem;
         this.syncStatus = syncStatus;
+        this.origemDestino = origemDestino;
+        this.conta = conta;
     }
 }
