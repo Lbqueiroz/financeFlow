@@ -10,7 +10,7 @@ import com.lucas.financeflow.data.model.Lancamento;
 
 @Database(
         entities = {Lancamento.class},
-        version = 1,
+        version = 2,
         exportSchema = false
 )public abstract class AppDatabase extends RoomDatabase{
 
