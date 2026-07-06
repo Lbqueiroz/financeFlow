@@ -31,4 +31,10 @@
         android:layout_height="wrap_content"
         android:text="Adicionar lançamento" />
 
+    <Button
+        android:id="@+id/btnVerLancamentos"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ver lançamentos" />
+
 </LinearLayout>

@@ -39,4 +39,16 @@ public class FinanceiroRepository {
     public LiveData<Double> totalSaidas(){
         return lancamentoDao.totalSaidas();
     }
+
+    public void atualizar(Lancamento lancamento) {
+        executorService.execute(() -> lancamentoDao.atualizar(lancamento));
+    }
+
+    public void deletar(Lancamento lancamento) {
+        executorService.execute(() -> lancamentoDao.deletar(lancamento));
+    }
+
+    public LiveData<List<Lancamento>> buscarPorDescricao(String busca) {
+        return lancamentoDao.buscarPorDescricao(busca);
+    }
 }

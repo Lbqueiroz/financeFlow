@@ -16,7 +16,7 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView txtEntradas, txtSaidas, txtSaldo;
 
-    private Button btnAdicionar;
+    private Button btnAdicionar, btnVerLancamentos;
     private double totalEntradas = 0;
     private double totalSaidas = 0;
 
@@ -29,9 +29,15 @@ public class MainActivity extends AppCompatActivity {
         txtSaidas = findViewById(R.id.txtSaidas);
         txtSaldo = findViewById(R.id.txtSaldo);
         btnAdicionar = findViewById(R.id.btnAdicionar);
+        btnVerLancamentos = findViewById(R.id.btnVerLancamentos);
 
         btnAdicionar.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, AddLancamentoActivity.class);
+            startActivity(intent);
+        });
+
+        btnVerLancamentos.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, LancamentosActivity.class);
             startActivity(intent);
         });
 
