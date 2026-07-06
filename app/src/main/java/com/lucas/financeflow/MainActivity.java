@@ -2,16 +2,21 @@ package com.lucas.financeflow;
 
 import android.os.Bundle;
 import android.widget.TextView;
+import android.content.Intent;
+import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.lucas.financeflow.ui.dashboard.DashboardViewModel;
 
+
+
 public class MainActivity extends AppCompatActivity {
 
     private TextView txtEntradas, txtSaidas, txtSaldo;
 
+    private Button btnAdicionar;
     private double totalEntradas = 0;
     private double totalSaidas = 0;
 
@@ -23,6 +28,12 @@ public class MainActivity extends AppCompatActivity {
         txtEntradas = findViewById(R.id.txtEntradas);
         txtSaidas = findViewById(R.id.txtSaidas);
         txtSaldo = findViewById(R.id.txtSaldo);
+        btnAdicionar = findViewById(R.id.btnAdicionar);
+
+        btnAdicionar.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, AddLancamentoActivity.class);
+            startActivity(intent);
+        });
 
         DashboardViewModel viewModel = new ViewModelProvider(this)
             .get(DashboardViewModel.class);
