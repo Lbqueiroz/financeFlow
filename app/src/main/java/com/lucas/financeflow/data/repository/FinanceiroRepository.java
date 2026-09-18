@@ -9,7 +9,6 @@ import com.lucas.financeflow.data.local.LancamentoDao;
 import com.lucas.financeflow.data.model.Lancamento;
 
 import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -21,10 +20,6 @@ public class FinanceiroRepository {
     public FinanceiroRepository(Context context){
         AppDatabase database = AppDatabase.getInstance(context);
         lancamentoDao = database.lancamentoDao();
-    }
-
-    public void inserir(Lancamento lancamento){
-        executorService.execute(() -> lancamentoDao.inserir(lancamento));
     }
 
     public LiveData<Lancamento> porId(int id) { return lancamentoDao.porId(id); }
@@ -52,23 +47,4 @@ public class FinanceiroRepository {
         return lancamentoDao.listarTodos();
     }
 
-    public LiveData<Double> totalEntradas(){
-        return lancamentoDao.totalEntradas();
-    }
-
-    public LiveData<Double> totalSaidas(){
-        return lancamentoDao.totalSaidas();
-    }
-
-    public void atualizar(Lancamento lancamento) {
-        executorService.execute(() -> lancamentoDao.atualizar(lancamento));
-    }
-
-    public void deletar(Lancamento lancamento) {
-        executorService.execute(() -> lancamentoDao.deletar(lancamento));
-    }
-
-    public LiveData<List<Lancamento>> buscarPorDescricao(String busca) {
-        return lancamentoDao.buscarPorDescricao(busca);
-    }
 }
