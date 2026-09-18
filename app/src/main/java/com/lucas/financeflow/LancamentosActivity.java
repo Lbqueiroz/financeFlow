@@ -28,17 +28,24 @@ public class LancamentosActivity extends BaseActivity {
     private TextView resumo;
     private String mes;
     private Button exportar;
+    private Button filtroData;
+    private DateRange intervalo;
     private final ActivityResultLauncher<String> arquivo = registerForActivityResult(new ActivityResultContracts.CreateDocument("text/csv"), this::exportar);
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         mes = getIntent().getStringExtra("mes");
+        if (state != null) {
+            mes = state.getString("mes");
+            if (state.containsKey("inicio")) intervalo = new DateRange(state.getString("inicio"), state.getString("fim"));
+        }
         repository = new FinanceiroRepository(this);
-        LinearLayout body = tela("Lançamentos", mes == null ? "Todo o histórico" : "Movimentações de " + mes.substring(5) + "/" + mes.substring(0, 4), false);
-        if (mes != null) secundario(body, "Mostrar todo o histórico", v -> { getIntent().removeExtra("mes"); recreate(); });
-        busca = campo(body, "Busca", "Descrição, categoria, conta ou pessoa", R.id.lista_busca);
+        LinearLayout body = tela("Lançamentos", "Seu histórico de entradas e saídas.", false);
+        busca = campo(body, "Busca", "Nome, categoria, conta ou origem", R.id.lista_busca);
         tipo = seletor(body, new String[]{"Todos os tipos", "Entradas", "Saídas"}, R.id.lista_tipo);
         tipo.setContentDescription("Filtrar por tipo");
+        filtroData = secundario(body, "", v -> escolherPeriodo()); filtroData.setId(R.id.filtro_data);
+        atualizarPeriodo();
         resumo = texto(body, "Carregando…", 16);
         RecyclerView recycler = new RecyclerView(this); recycler.setId(R.id.lista_itens);
         recycler.setLayoutManager(new LinearLayoutManager(this));
@@ -66,7 +73,8 @@ public class LancamentosActivity extends BaseActivity {
         String query = FinanceUtils.normalizar(busca.getText().toString().trim());
         List<Lancamento> filtrados = new ArrayList<>(); long total = 0;
         for (Lancamento item : todos) {
-            if (mes != null && (item.data == null || !item.data.startsWith(mes))) continue;
+            if (intervalo != null) { if (!intervalo.contem(item.data)) continue; }
+            else if (mes != null && (item.data == null || !item.data.startsWith(mes))) continue;
             boolean entrada = "ENTRADA".equals(item.tipo);
             if (tipo.getSelectedItemPosition() == 1 && !entrada || tipo.getSelectedItemPosition() == 2 && entrada) continue;
             if (!FinanceUtils.normalizar(item.descricao + " " + item.categoria + " " + item.conta + " " + item.origemDestino).contains(query)) continue;
@@ -75,6 +83,36 @@ public class LancamentosActivity extends BaseActivity {
         visiveis = filtrados; adapter.setLancamentos(filtrados);
         resumo.setText(filtrados.isEmpty() ? "Nenhum lançamento encontrado." : filtrados.size() + " lançamento(s) · Saldo " + FinanceUtils.moeda(total));
         if (exportar != null) exportar.setEnabled(!filtrados.isEmpty());
+    }
+    private void atualizarPeriodo() {
+        if (intervalo != null) filtroData.setText(FinanceUtils.dataVisivel(intervalo.inicio) + (intervalo.inicio.equals(intervalo.fim) ? "" : " a " + FinanceUtils.dataVisivel(intervalo.fim)));
+        else filtroData.setText(mes == null ? "Filtrar por data ou período" : "Período: " + mes.substring(5) + "/" + mes.substring(0, 4));
+    }
+    private void escolherPeriodo() {
+        LinearLayout panel = new LinearLayout(this); panel.setOrientation(LinearLayout.VERTICAL); panel.setPadding(dp(24), 0, dp(24), 0);
+        texto(panel, "Para um único dia, preencha só a data inicial. Para um período, preencha as duas datas.", 15);
+        EditText de = campo(panel, "Data inicial", "18/09/26", R.id.filtro_inicio);
+        EditText ate = campo(panel, "Data final (opcional)", "30/09/26", R.id.filtro_fim);
+        de.setInputType(android.text.InputType.TYPE_CLASS_DATETIME | android.text.InputType.TYPE_DATETIME_VARIATION_DATE);
+        ate.setInputType(android.text.InputType.TYPE_CLASS_DATETIME | android.text.InputType.TYPE_DATETIME_VARIATION_DATE);
+        if (intervalo != null) { de.setText(FinanceUtils.dataVisivel(intervalo.inicio)); ate.setText(FinanceUtils.dataVisivel(intervalo.fim)); }
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Pesquisar por data").setView(panel)
+                .setNegativeButton("Cancelar", null).setNeutralButton("Limpar filtro", (d, w) -> {
+                    intervalo = null; mes = null; atualizarPeriodo(); filtrar();
+                }).setPositiveButton("Aplicar", null).create();
+        dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
+            try { DateRange.iso(de.getText().toString()); }
+            catch (IllegalArgumentException ex) { de.setError(ex.getMessage()); return; }
+            try { intervalo = new DateRange(de.getText().toString(), ate.getText().toString()); }
+            catch (IllegalArgumentException ex) { ate.setError(ex.getMessage()); return; }
+            mes = null; atualizarPeriodo(); filtrar(); dialog.dismiss();
+        }));
+        dialog.show();
+    }
+    @Override protected void onSaveInstanceState(Bundle out) {
+        out.putString("mes", mes);
+        if (intervalo != null) { out.putString("inicio", FinanceUtils.dataVisivel(intervalo.inicio)); out.putString("fim", FinanceUtils.dataVisivel(intervalo.fim)); }
+        super.onSaveInstanceState(out);
     }
     private void confirmarExclusao(Lancamento item) {
         new AlertDialog.Builder(this).setTitle("Excluir lançamento?")
@@ -93,7 +131,7 @@ public class LancamentosActivity extends BaseActivity {
             try (OutputStream stream = getContentResolver().openOutputStream(uri, "wt")) {
                 if (stream == null) throw new IOException("Arquivo indisponível");
                 try (Writer writer = new OutputStreamWriter(stream, StandardCharsets.UTF_8)) {
-                    writer.write("\uFEFFData;Descrição;Tipo;Categoria;Conta;Origem/Destino;Valor\r\n");
+                    writer.write("\uFEFFData;Nome;Tipo;Categoria;Conta;Origem/Destino;Valor\r\n");
                     for (Lancamento item : copia) {
                         writer.write(FinanceUtils.csv(FinanceUtils.dataVisivel(item.data)) + ";" + FinanceUtils.csv(item.descricao) + ";" + FinanceUtils.csv(item.tipo) + ";" + FinanceUtils.csv(item.categoria) + ";" + FinanceUtils.csv(item.conta) + ";" + FinanceUtils.csv(item.origemDestino) + ";" + String.format(FinanceUtils.BR, "%.2f", item.valor) + "\r\n");
                     }

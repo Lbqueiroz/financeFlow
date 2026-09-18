@@ -1,4 +1,7 @@
 <resources>
+    <item name="filtro_inicio" type="id" />
+    <item name="filtro_fim" type="id" />
+    <item name="filtro_data" type="id" />
     <item name="form_descricao" type="id" />
     <item name="form_valor" type="id" />
     <item name="form_tipo" type="id" />
