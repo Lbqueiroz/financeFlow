@@ -1,147 +1,97 @@
 package com.lucas.financeflow;
 
+import android.app.DatePickerDialog;
 import android.os.Bundle;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.Spinner;
-import android.widget.Toast;
-
-import androidx.appcompat.app.AppCompatActivity;
-
+import android.widget.*;
 import com.lucas.financeflow.data.model.Lancamento;
 import com.lucas.financeflow.data.repository.FinanceiroRepository;
+import java.util.*;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-public class AddLancamentoActivity extends AppCompatActivity {
-
-    private EditText edtDescricao, edtValor;
-    private Spinner spinnerTipo, spinnerCategoria, spinnerOrigemDestino, spinnerConta;
-    private Button btnSalvar;
-
-    String origem = "CELULAR";
-    String syncStatus = "PENDENTE";
-
+public class AddLancamentoActivity extends BaseActivity {
+    private EditText descricao, valor, categoria, conta, pessoa;
+    private Spinner tipo;
+    private Button salvar, data;
+    private String dataIso;
+    private Lancamento original;
+    private boolean carregado;
     private FinanceiroRepository repository;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState){
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_add_lancamento);
-
+    @Override protected void onCreate(Bundle state) {
+        super.onCreate(state);
         repository = new FinanceiroRepository(this);
-
-        edtDescricao = findViewById(R.id.edtDescricao);
-        edtValor = findViewById(R.id.edtValor);
-        spinnerTipo = findViewById(R.id.spinnerTipo);
-        spinnerCategoria = findViewById(R.id.spinnerCategoria);
-        btnSalvar = findViewById(R.id.btnSalvar);
-        spinnerConta = findViewById(R.id.spinnerConta);
-        spinnerOrigemDestino = findViewById(R.id.spinnerOrigemDestino);
-
-        configurarSpinners();
-
-        btnSalvar.setOnClickListener(v -> salvarLancamento());
-    }
-
-    private void configurarSpinners() {
-        String[] tipos = {"ENTRADA", "SAIDA"};
-        String[] categorias = {
-                "SALARIO",
-                "Renda Extra",
-                "Conta fixa",
-                "Gasto variavél",
-                "Cartão",
-                "Terceiros",
-                "Outros"
-        };
-
-        String[] contas = {
-                "INTER",
-                "Crédito INTER",
-                "NUBANK",
-                "Crédito NUBANK",
-                "SANTANDER",
-                "Crédito SANTANDER",
-                "CAIXA",
-                "SHOPEE PAY",
-                "MERCADO PAGO",
-                "Crédito Mercado Pago",
-                "OUTROS"
-        };
-
-        String[] origensDestinos = {
-                "Shopee",
-                "Mãe",
-                "Amor",
-                "Luiz",
-                "Pai",
-                "Eu",
-                "OUTRO"
-        };
-
-        spinnerTipo.setAdapter(criarAdapter(tipos));
-        spinnerCategoria.setAdapter(criarAdapter(categorias));
-        spinnerConta.setAdapter(criarAdapter(contas));
-        spinnerOrigemDestino.setAdapter(criarAdapter(origensDestinos));
-    }
-
-    private ArrayAdapter<String> criarAdapter(String[] itens) {
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_spinner_item,
-                itens
-        );
-
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-
-        return adapter;
-    }
-    private void salvarLancamento() {
-        String descricao = edtDescricao.getText().toString().trim();
-        String valorTexto = edtValor.getText().toString().trim();
-
-        if (descricao.isEmpty() || valorTexto.isEmpty()) {
-            Toast.makeText(this, "Preencha a descrição e o valor", Toast.LENGTH_SHORT).show();
-            return;
+        int id = getIntent().getIntExtra("id", 0);
+        LinearLayout body = tela(id == 0 ? "Novo lançamento" : "Editar lançamento", "Organize os detalhes da sua movimentação.", true);
+        descricao = campo(body, "Descrição", "Ex.: supermercado", 101);
+        descricao.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        valor = campo(body, "Valor (R$)", "0,00", 102);
+        valor.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        rotulo(body, "Tipo");
+        tipo = seletor(body, new String[]{"Entrada", "Saída"}, 103);
+        categoria = sugestoes(body, "Categoria", new String[]{"Salário", "Renda extra", "Moradia", "Alimentação", "Transporte", "Saúde", "Lazer", "Conta fixa", "Cartão", "Terceiros", "Outros"}, 104);
+        conta = sugestoes(body, "Conta", new String[]{"INTER", "Crédito INTER", "NUBANK", "Crédito NUBANK", "SANTANDER", "CAIXA", "SHOPEE PAY", "MERCADO PAGO", "Dinheiro", "Outros"}, 105);
+        pessoa = sugestoes(body, "Origem / destino (opcional)", new String[]{"Eu", "Mãe", "Pai", "Amor", "Luiz", "Shopee"}, 106);
+        dataIso = state == null ? FinanceUtils.hoje() : state.getString("data", FinanceUtils.hoje());
+        data = botao(body, "Data: " + FinanceUtils.dataVisivel(dataIso), v -> escolherData());
+        salvar = botao(body, "Salvar lançamento", v -> salvar());
+        botao(body, "Cancelar", v -> finish());
+        if (id != 0) {
+            salvar.setEnabled(false);
+            repository.porId(id).observe(this, item -> {
+                if (carregado) return;
+                carregado = true;
+                if (item == null) { Toast.makeText(this, "Lançamento não encontrado", Toast.LENGTH_LONG).show(); finish(); return; }
+                original = item;
+                if (state == null) {
+                    descricao.setText(item.descricao);
+                    valor.setText(String.format(FinanceUtils.BR, "%.2f", item.valor));
+                    tipo.setSelection("ENTRADA".equals(item.tipo) ? 0 : 1);
+                    categoria.setText(item.categoria); conta.setText(item.conta); pessoa.setText(item.origemDestino);
+                    dataIso = item.data;
+                    data.setText("Data: " + FinanceUtils.dataVisivel(dataIso));
+                }
+                salvar.setEnabled(true);
+            });
         }
+    }
 
-        double valor;
-
+    private void escolherData() {
+        Calendar cal = Calendar.getInstance();
         try {
-            valor = Double.parseDouble(valorTexto);
-        } catch (NumberFormatException e) {
-            Toast.makeText(this, "Valor inválido", Toast.LENGTH_SHORT).show();
-            return;
-        }
+            String[] parts = dataIso.split("-");
+            cal.set(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]) - 1, Integer.parseInt(parts[2]));
+        } catch (RuntimeException ignored) { }
+        new DatePickerDialog(this, (picker, year, month, day) -> {
+            dataIso = String.format(Locale.ROOT, "%04d-%02d-%02d", year, month + 1, day);
+            data.setText("Data: " + FinanceUtils.dataVisivel(dataIso));
+        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show();
+    }
 
-        String tipo = spinnerTipo.getSelectedItem().toString();
-        String categoria = spinnerCategoria.getSelectedItem().toString();
-        String conta = spinnerConta.getSelectedItem().toString();
-        String origemDestino = spinnerOrigemDestino.getSelectedItem().toString();
+    private boolean obrigatorio(EditText campo) {
+        if (!campo.getText().toString().trim().isEmpty()) return true;
+        campo.setError("Preencha este campo"); campo.requestFocus(); return false;
+    }
 
-        String dataAtual = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
-                .format(new Date());
+    private void salvar() {
+        if (!obrigatorio(descricao) || !obrigatorio(categoria) || !obrigatorio(conta)) return;
+        double quantia;
+        try { quantia = FinanceUtils.parseValor(valor.getText().toString()); }
+        catch (IllegalArgumentException ex) { valor.setError("Informe de R$ 0,01 a R$ 999.999.999,99, com até 2 casas decimais"); valor.requestFocus(); return; }
+        Lancamento item = new Lancamento(descricao.getText().toString().trim(), quantia,
+                tipo.getSelectedItemPosition() == 0 ? "ENTRADA" : "SAIDA",
+                categoria.getText().toString().trim(), dataIso, "CELULAR", "LOCAL",
+                pessoa.getText().toString().trim(), conta.getText().toString().trim());
+        if (original != null) item.id = original.id;
+        salvar.setEnabled(false);
+        repository.salvar(item, ok -> {
+            if (isFinishing() || isDestroyed()) return;
+            salvar.setEnabled(true);
+            Toast.makeText(this, ok ? "Lançamento salvo" : "Não foi possível salvar. Tente novamente.", Toast.LENGTH_LONG).show();
+            if (ok) finish();
+        });
+    }
 
-        Lancamento lancamento = new Lancamento(
-                descricao,
-                valor,
-                tipo,
-                categoria,
-                conta,
-                origemDestino,
-                dataAtual,
-                origem,
-                syncStatus
-        );
-
-            repository.inserir(lancamento);
-
-            Toast.makeText(this, "Lancamento salvo", Toast.LENGTH_SHORT).show();
-            finish();
-        }
-   }
-
-
+    @Override protected void onSaveInstanceState(Bundle out) {
+        out.putString("data", dataIso);
+        super.onSaveInstanceState(out);
+    }
+}
