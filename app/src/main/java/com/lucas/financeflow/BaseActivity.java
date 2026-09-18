@@ -16,6 +16,28 @@ public abstract class BaseActivity extends AppCompatActivity {
     }
     protected int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }
     protected int tabAtual() { return R.id.nav_inicio; }
+    protected void cadastrar(String tipo, java.util.function.Consumer<String> onSaved) {
+        boolean conta = com.lucas.financeflow.data.model.Cadastro.CONTA.equals(tipo);
+        LinearLayout panel = new LinearLayout(this); panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(24), 0, dp(24), dp(8));
+        EditText nome = campo(panel, "Nome", conta ? "Ex.: Minha conta" : "Ex.: Trabalho", View.generateViewId());
+        nome.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        nome.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(80)});
+        androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(conta ? "Cadastrar conta" : "Cadastrar origem / destino")
+                .setView(panel).setNegativeButton("Cancelar", null).setPositiveButton("Cadastrar", null).create();
+        dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
+            String value = nome.getText().toString().trim().replaceAll("\\s+", " ");
+            if (value.isEmpty()) { nome.setError("Informe um nome"); return; }
+            dialog.getButton(-1).setEnabled(false);
+            new com.lucas.financeflow.data.repository.FinanceiroRepository(this).cadastrar(tipo, value, ok -> {
+                if (isDestroyed()) return;
+                if (ok) { onSaved.accept(value); dialog.dismiss(); }
+                else { dialog.getButton(-1).setEnabled(true); nome.setError("Não foi possível cadastrar. Tente novamente."); }
+            });
+        }));
+        dialog.show();
+    }
 
     protected LinearLayout tela(String titulo, String subtitulo, boolean rolar) {
         LinearLayout root = new LinearLayout(this);

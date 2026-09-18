@@ -15,6 +15,7 @@
         <activity android:name=".LancamentosActivity" />
         <activity android:name=".BackupActivity" />
         <activity android:name=".ContasActivity" />
+        <activity android:name=".CadastrosActivity" />
         <activity android:name=".CategoriasActivity" />
 
         <activity

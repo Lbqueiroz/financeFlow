@@ -17,7 +17,7 @@ public class MainActivity extends BaseActivity {
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         if (state != null) mes.setTimeInMillis(state.getLong("mes"));
-        LinearLayout body = tela("Seu resumo", "Uma visão simples do seu mês.", true);
+        LinearLayout body = tela("Resumos mensais", "Uma visão simples do seu mês.", true);
         periodo = texto(body, "", 20);
         LinearLayout navegacao = new LinearLayout(this); body.addView(navegacao);
         Button anterior = secundario(navegacao, "‹ Anterior", v -> mudarMes(-1));

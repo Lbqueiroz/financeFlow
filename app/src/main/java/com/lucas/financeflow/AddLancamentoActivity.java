@@ -23,15 +23,25 @@ public class AddLancamentoActivity extends BaseActivity {
         saveModel = new androidx.lifecycle.ViewModelProvider(this).get(SaveViewModel.class);
         int id = getIntent().getIntExtra("id", 0);
         LinearLayout body = tela(id == 0 ? "Novo lançamento" : "Editar lançamento", "Organize os detalhes da sua movimentação.", true);
-        descricao = campo(body, "Descrição", "Ex.: supermercado", R.id.form_descricao);
+        descricao = campo(body, "Nome", "Ex.: supermercado", R.id.form_descricao);
         descricao.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         valor = campo(body, "Valor (R$)", "0,00", R.id.form_valor);
-        valor.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        MoneyInput.attach(valor);
         rotulo(body, "Tipo");
         tipo = seletor(body, new String[]{"Entrada", "Saída"}, R.id.form_tipo);
         categoria = opcoes(body, "Categoria", new String[]{"Salário", "Renda extra", "Moradia", "Alimentação", "Transporte", "Saúde", "Lazer", "Conta fixa", "Cartão", "Terceiros", "Outros"}, R.id.form_categoria);
-        conta = opcoes(body, "Conta", new String[]{"INTER", "Crédito INTER", "NUBANK", "Crédito NUBANK", "SANTANDER", "CAIXA", "SHOPEE PAY", "MERCADO PAGO", "Dinheiro", "Outros"}, R.id.form_conta);
-        pessoa = opcoes(body, "Origem / destino (opcional)", new String[]{"Não informado", "Eu", "Mãe", "Pai", "Amor", "Luiz", "Shopee"}, R.id.form_pessoa);
+        conta = opcoes(body, "Conta", new String[]{"Selecione uma conta"}, R.id.form_conta);
+        secundario(body, "+ Cadastrar conta", v -> cadastrar("CONTA", nome -> selecionar(conta, nome)));
+        pessoa = opcoes(body, "Origem / destino (opcional)", new String[]{"Não informado"}, R.id.form_pessoa);
+        conta.setSaveEnabled(false); pessoa.setSaveEnabled(false); categoria.setSaveEnabled(false);
+        secundario(body, "+ Cadastrar origem / destino", v -> cadastrar("ORIGEM", nome -> selecionar(pessoa, nome)));
+        repository.cadastros().observe(this, itens -> {
+            for (com.lucas.financeflow.data.model.Cadastro item : itens) {
+                Spinner spinner = "CONTA".equals(item.tipo) ? conta : pessoa;
+                ArrayAdapter<String> adapter = (ArrayAdapter<String>) spinner.getAdapter();
+                if (posicao(adapter, item.nome) < 0) adapter.add(item.nome);
+            }
+        });
         if (state != null) {
             selecionar(categoria, state.getString("categoria"));
             selecionar(conta, state.getString("conta"));
@@ -74,9 +84,14 @@ public class AddLancamentoActivity extends BaseActivity {
     private void selecionar(Spinner spinner, String value) {
         if (value == null || value.isEmpty()) return;
         ArrayAdapter<String> adapter = (ArrayAdapter<String>) spinner.getAdapter();
-        int position = adapter.getPosition(value);
+        int position = posicao(adapter, value);
         if (position < 0) { adapter.add(value); position = adapter.getPosition(value); }
         spinner.setSelection(position);
+    }
+
+    private int posicao(ArrayAdapter<String> adapter, String value) {
+        for (int i = 0; i < adapter.getCount(); i++) if (value.equalsIgnoreCase(adapter.getItem(i))) return i;
+        return -1;
     }
 
     private void escolherData() {
@@ -98,6 +113,9 @@ public class AddLancamentoActivity extends BaseActivity {
 
     private void salvar() {
         if (!obrigatorio(descricao)) return;
+        if (conta.getSelectedItemPosition() == 0) {
+            Toast.makeText(this, "Cadastre e selecione uma conta", Toast.LENGTH_LONG).show(); return;
+        }
         double quantia;
         try { quantia = FinanceUtils.parseValor(valor.getText().toString()); }
         catch (IllegalArgumentException ex) { valor.setError("Informe de R$ 0,01 a R$ 999.999.999,99, com até 2 casas decimais"); valor.requestFocus(); return; }

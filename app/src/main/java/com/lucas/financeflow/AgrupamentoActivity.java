@@ -13,10 +13,12 @@ public abstract class AgrupamentoActivity extends BaseActivity {
     private List<Lancamento> itens = new ArrayList<>();
     private LinearLayout lista;
     private TextView periodo;
+    private List<com.lucas.financeflow.data.model.Cadastro> cadastros = new ArrayList<>();
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         if (state != null) mes.setTimeInMillis(state.getLong("mes"));
-        LinearLayout body = tela(porConta() ? "Suas contas" : "Categorias", porConta() ? "Saldo acumulado de cada conta." : "Veja para onde seu dinheiro foi.", true);
+        LinearLayout body = tela(porConta() ? "Suas contas" : "Saídas", porConta() ? "Saldo acumulado de cada conta." : "Saídas por categoria\nVeja para onde seu dinheiro foi", true);
+        if (porConta()) botao(body, "Cadastrar contas e origens", v -> startActivity(new android.content.Intent(this, CadastrosActivity.class)));
         if (!porConta()) {
             periodo = texto(body, "", 20);
             LinearLayout controls = new LinearLayout(this); body.addView(controls);
@@ -26,6 +28,7 @@ public abstract class AgrupamentoActivity extends BaseActivity {
             next.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
         }
         lista = new LinearLayout(this); lista.setOrientation(LinearLayout.VERTICAL); body.addView(lista);
+        if (porConta()) new FinanceiroRepository(this).cadastros().observe(this, dados -> { cadastros = dados; atualizar(); });
         new FinanceiroRepository(this).listarTodos().observe(this, dados -> { itens = dados; atualizar(); });
         atualizar();
     }
@@ -34,6 +37,9 @@ public abstract class AgrupamentoActivity extends BaseActivity {
         String month = new SimpleDateFormat("yyyy-MM", Locale.ROOT).format(mes.getTime());
         if (periodo != null) periodo.setText(new SimpleDateFormat("MMMM 'de' yyyy", FinanceUtils.BR).format(mes.getTime()));
         Map<String, Long> grupos = new TreeMap<>();
+        if (porConta()) for (com.lucas.financeflow.data.model.Cadastro cadastro : cadastros) {
+            if ("CONTA".equals(cadastro.tipo)) grupos.put(cadastro.nome, 0L);
+        }
         for (Lancamento item : itens) {
             boolean receita = "ENTRADA".equals(item.tipo);
             if (!porConta() && (receita || item.data == null || !item.data.startsWith(month))) continue;
