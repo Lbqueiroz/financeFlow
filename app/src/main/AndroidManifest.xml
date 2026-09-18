@@ -13,6 +13,7 @@
         android:theme="@style/Theme.Financeflow">
         <activity android:name=".AddLancamentoActivity" />
         <activity android:name=".LancamentosActivity" />
+        <activity android:name=".BackupActivity" />
 
         <activity
             android:name=".MainActivity"

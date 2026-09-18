@@ -22,11 +22,20 @@ public interface  LancamentoDao {
     @Query("SELECT * FROM lancamentos WHERE id = :id")
     LiveData<Lancamento> porId(int id);
 
-    @Query("SELECT COALESCE(SUM(valor), 0) FROM lancamentos WHERE tipo = 'ENTRADA'")
-    LiveData<Double> totalEntradas();
+    @Query("SELECT * FROM lancamentos ORDER BY data DESC, id DESC")
+    List<Lancamento> snapshot();
 
-    @Query("SELECT COALESCE(SUM(valor), 0) FROM lancamentos WHERE tipo = 'SAIDA'")
-    LiveData<Double> totalSaidas();
+    @Query("DELETE FROM lancamentos")
+    void limpar();
+
+    @Insert
+    void inserirTodos(List<Lancamento> itens);
+
+    @androidx.room.Transaction
+    default void restaurar(List<Lancamento> itens) {
+        limpar();
+        inserirTodos(itens);
+    }
 
     @Delete
     void deletar(Lancamento lancamento);
@@ -34,6 +43,4 @@ public interface  LancamentoDao {
     @Update
     void atualizar(Lancamento lancamento);
 
-    @Query("SELECT * FROM lancamentos WHERE descricao LIKE '%' || :busca || '%' ORDER BY data DESC")
-    LiveData<List<Lancamento>> buscarPorDescricao(String busca);
 }

@@ -30,6 +30,7 @@ public class MainActivity extends BaseActivity {
         botao(body, "+ Novo lançamento", v -> startActivity(new Intent(this, AddLancamentoActivity.class)));
         botao(body, "Ver lançamentos do mês", v -> startActivity(new Intent(this, LancamentosActivity.class).putExtra("mes", chaveMes())));
         botao(body, "Todo o histórico / exportar", v -> startActivity(new Intent(this, LancamentosActivity.class)));
+        botao(body, "Backup e restauração", v -> startActivity(new Intent(this, BackupActivity.class)));
         texto(body, "Despesas por categoria", 22);
         categorias = texto(body, "", 16);
         texto(body, "Saldo por conta · todo o histórico", 22);
