@@ -1,0 +1,4 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape android:shape="oval"><solid android:color="#F4F7F5" /><size android:width="48dp" android:height="48dp" /></shape></item>
+    <item android:top="5dp" android:bottom="5dp" android:left="5dp" android:right="5dp"><bitmap android:src="@drawable/financeflow_mark" android:gravity="fill" android:filter="true" /></item>
+</layer-list>
