@@ -65,6 +65,10 @@ public final class BackupCodec {
                 cadastros.add(new Cadastro(tipo, obrigatorio(name, "nome")));
             }
         }
+        if (version == 1) for (Lancamento item : itens) {
+            cadastros.add(new Cadastro(Cadastro.CONTA, item.conta));
+            if (!item.origemDestino.trim().isEmpty()) cadastros.add(new Cadastro(Cadastro.ORIGEM, item.origemDestino.trim()));
+        }
         return new Documento(itens, cadastros);
     }
     private static String obrigatorio(JSONObject record, String key) throws JSONException {

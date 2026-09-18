@@ -8,6 +8,7 @@ Aplicativo Android de finanças pessoais, em português, sem login ou servidor. 
 - Valor formatado automaticamente em reais: digite `100000` para obter `1.000,00`. Os dois últimos dígitos são os centavos. Valores devem ser positivos.
 - Campo Nome, data selecionável, entradas/saídas e seletores de categoria, conta e origem/destino. Cadastre suas próprias contas e origens na aba Contas ou diretamente no formulário; os cadastros persistem mesmo sem lançamentos. Contas e origens já usadas são importadas na atualização.
 - Menu inferior com cinco abas: Resumo, Lançamentos, Contas, Categorias e Backup. O resumo mostra saldo, entradas, saídas e últimos lançamentos do mês.
+- Exclusão de contas e origens/destinos em Contas → Cadastrar contas e origens, com confirmação. Excluir um cadastro remove a opção para novos lançamentos, preservando os registros e saldos antigos. Backups v2 preservam essa exclusão.
 - Saldo acumulado por conta considerando todo o histórico.
 - Busca por nome, categoria, conta e origem, ignorando acentos e maiúsculas; filtro por tipo e por data ou intervalo inclusivo. Use `dd/MM/aa` ou `dd/MM/aaaa`; anos de dois dígitos representam 2000–2099. Preencha só a data inicial para pesquisar um dia. Datas inexistentes e intervalos invertidos são rejeitados.
 - CSV da lista filtrada, com separador `;` e UTF-8, para abrir em uma planilha.

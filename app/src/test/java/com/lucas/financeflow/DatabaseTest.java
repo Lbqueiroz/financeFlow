@@ -16,6 +16,23 @@ import static org.junit.Assert.*;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 28)
 public class DatabaseTest {
+    @Test public void deletingRegistrationsPreservesHistoryAndDoesNotReturnAfterBackup() throws Exception {
+        db = Room.inMemoryDatabaseBuilder(RuntimeEnvironment.getApplication(), AppDatabase.class).allowMainThreadQueries().build();
+        com.lucas.financeflow.data.model.Cadastro conta = new com.lucas.financeflow.data.model.Cadastro("CONTA", "Carteira");
+        com.lucas.financeflow.data.model.Cadastro origem = new com.lucas.financeflow.data.model.Cadastro("ORIGEM", "Trabalho");
+        db.lancamentoDao().cadastrar(conta); db.lancamentoDao().cadastrar(origem);
+        db.lancamentoDao().inserir(new Lancamento("Pagamento", 50, "ENTRADA", "Outros", "2026-09-18", "CELULAR", "LOCAL", "Trabalho", "Carteira"));
+        db.lancamentoDao().excluirCadastro(conta);
+        assertEquals(1, db.lancamentoDao().snapshotCadastros().size());
+        db.lancamentoDao().excluirCadastro(origem);
+        assertTrue(db.lancamentoDao().snapshotCadastros().isEmpty());
+        assertEquals("Carteira", db.lancamentoDao().snapshot().get(0).conta);
+        assertEquals("Trabalho", db.lancamentoDao().snapshot().get(0).origemDestino);
+        BackupCodec.Documento backup = BackupCodec.decodeCompleto(BackupCodec.encode(db.lancamentoDao().snapshot(), db.lancamentoDao().snapshotCadastros()));
+        db.lancamentoDao().restaurarCompleto(backup.itens, backup.cadastros);
+        assertTrue(db.lancamentoDao().snapshotCadastros().isEmpty());
+        assertEquals(50, db.lancamentoDao().snapshot().get(0).valor, 0);
+    }
     private AppDatabase db;
     @After public void close() { if (db != null) db.close(); }
 

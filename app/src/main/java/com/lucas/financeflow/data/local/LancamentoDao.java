@@ -23,6 +23,9 @@ public interface  LancamentoDao {
     @Insert(onConflict = androidx.room.OnConflictStrategy.IGNORE)
     void cadastrar(Cadastro cadastro);
 
+    @Delete
+    void excluirCadastro(Cadastro cadastro);
+
     @Query("DELETE FROM cadastros")
     void limparCadastros();
 
@@ -55,10 +58,6 @@ public interface  LancamentoDao {
         limparCadastros();
         inserirTodos(itens);
         for (Cadastro cadastro : cadastros) cadastrar(cadastro);
-        for (Lancamento item : itens) {
-            if (item.conta != null && !item.conta.trim().isEmpty()) cadastrar(new Cadastro(Cadastro.CONTA, item.conta.trim()));
-            if (item.origemDestino != null && !item.origemDestino.trim().isEmpty()) cadastrar(new Cadastro(Cadastro.ORIGEM, item.origemDestino.trim()));
-        }
     }
 
     @Delete

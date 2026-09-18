@@ -30,6 +30,9 @@ public class FinanceiroRepository {
     public void cadastrar(String tipo, String nome, Resultado resultado) {
         executar(() -> lancamentoDao.cadastrar(new com.lucas.financeflow.data.model.Cadastro(tipo, nome.trim())), resultado);
     }
+    public void excluirCadastro(com.lucas.financeflow.data.model.Cadastro cadastro, Resultado resultado) {
+        executar(() -> lancamentoDao.excluirCadastro(cadastro), resultado);
+    }
 
     public void salvar(Lancamento item, Resultado resultado) {
         executar(() -> { if (item.id == 0) lancamentoDao.inserir(item); else lancamentoDao.atualizar(item); }, resultado);
