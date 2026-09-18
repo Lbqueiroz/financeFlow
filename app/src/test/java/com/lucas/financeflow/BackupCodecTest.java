@@ -11,6 +11,15 @@ import static org.junit.Assert.*;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 28)
 public class BackupCodecTest {
+    @Test public void preservesUnusedRegistrationsAndReadsLegacyBackups() throws Exception {
+        String text = BackupCodec.encode(Collections.emptyList(), Arrays.asList(
+                new com.lucas.financeflow.data.model.Cadastro("CONTA", "Reserva"),
+                new com.lucas.financeflow.data.model.Cadastro("ORIGEM", "Freelance")));
+        BackupCodec.Documento copy = BackupCodec.decodeCompleto(text);
+        assertEquals(2, copy.cadastros.size()); assertTrue(copy.itens.isEmpty());
+        assertEquals("Reserva", copy.cadastros.get(0).nome);
+        assertTrue(BackupCodec.decodeCompleto("{\"app\":\"FinanceFlow\",\"version\":1,\"lancamentos\":[]}").cadastros.isEmpty());
+    }
     @Test public void roundTripPreservesAllUserFieldsAndLargeAmounts() throws Exception {
         Lancamento item = new Lancamento("Compra \"especial\"", 999999999.99, "SAIDA", "Alimentação", "2026-09-18", "CELULAR", "LOCAL", "Mãe", "INTER");
         Lancamento copy = BackupCodec.decode(BackupCodec.encode(Collections.singletonList(item))).get(0);

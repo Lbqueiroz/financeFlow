@@ -26,6 +26,11 @@ public class FinanceiroRepository {
 
     public interface Resultado { void concluir(boolean sucesso); }
 
+    public LiveData<List<com.lucas.financeflow.data.model.Cadastro>> cadastros() { return lancamentoDao.cadastros(); }
+    public void cadastrar(String tipo, String nome, Resultado resultado) {
+        executar(() -> lancamentoDao.cadastrar(new com.lucas.financeflow.data.model.Cadastro(tipo, nome.trim())), resultado);
+    }
+
     public void salvar(Lancamento item, Resultado resultado) {
         executar(() -> { if (item.id == 0) lancamentoDao.inserir(item); else lancamentoDao.atualizar(item); }, resultado);
     }

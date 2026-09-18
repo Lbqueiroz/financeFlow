@@ -27,7 +27,7 @@ public class DatabaseTest {
         legacy.execSQL("INSERT INTO lancamentos VALUES (1, 'Mercado', 'PENDENTE', 'CELULAR', 45.5, 'SAIDA', 'Alimentação', 'INTER', 'Eu', '18-09-2026')");
         legacy.execSQL("INSERT INTO lancamentos VALUES (2, 'Salário', 'NUBANK', 'Empresa', 2500, 'ENTRADA', 'Salário', '01-08-2026', 'CELULAR', 'PENDENTE')");
         legacy.setVersion(2); legacy.close();
-        db = Room.databaseBuilder(context, AppDatabase.class, "migration-test").addMigrations(AppDatabase.MIGRATION_2_3).allowMainThreadQueries().build();
+        db = Room.databaseBuilder(context, AppDatabase.class, "migration-test").addMigrations(AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4).allowMainThreadQueries().build();
         List<Lancamento> items = db.lancamentoDao().snapshot();
         assertEquals(2, items.size());
         Lancamento repaired = items.get(0);
@@ -35,6 +35,7 @@ public class DatabaseTest {
         assertEquals("2026-09-18", repaired.data); assertEquals("CELULAR", repaired.origem);
         assertEquals("PENDENTE", repaired.syncStatus);
         assertEquals("2026-08-01", items.get(1).data); assertEquals("NUBANK", items.get(1).conta);
+        assertEquals(4, db.lancamentoDao().snapshotCadastros().size());
     }
 
     @Test public void migratesVersionOneWithoutDeletingHistory() {
@@ -44,7 +45,7 @@ public class DatabaseTest {
         legacy.execSQL("CREATE TABLE lancamentos (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, descricao TEXT, valor REAL NOT NULL, tipo TEXT, categoria TEXT, data TEXT, origem TEXT, syncStatus TEXT)");
         legacy.execSQL("INSERT INTO lancamentos VALUES (1, 'Antigo', 100, 'ENTRADA', 'Outros', '02-01-2026', 'CELULAR', 'PENDENTE')");
         legacy.setVersion(1); legacy.close();
-        db = Room.databaseBuilder(context, AppDatabase.class, "migration-v1-test").addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3).allowMainThreadQueries().build();
+        db = Room.databaseBuilder(context, AppDatabase.class, "migration-v1-test").addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4).allowMainThreadQueries().build();
         Lancamento item = db.lancamentoDao().snapshot().get(0);
         assertEquals("Antigo", item.descricao); assertEquals("Outros", item.conta); assertEquals("2026-01-02", item.data);
     }
@@ -56,9 +57,20 @@ public class DatabaseTest {
         item = db.lancamentoDao().snapshot().get(0); item.descricao = "Editado";
         db.lancamentoDao().atualizar(item);
         assertEquals("Editado", db.lancamentoDao().snapshot().get(0).descricao);
+        db.lancamentoDao().cadastrar(new com.lucas.financeflow.data.model.Cadastro("CONTA", "Carteira"));
         try { db.lancamentoDao().restaurar(Arrays.asList(item, item)); fail("Duplicate IDs must roll back"); }
         catch (android.database.sqlite.SQLiteConstraintException expected) { }
         assertEquals("Editado", db.lancamentoDao().snapshot().get(0).descricao);
+        assertEquals("Carteira", db.lancamentoDao().snapshotCadastros().get(0).nome);
         db.lancamentoDao().deletar(item); assertTrue(db.lancamentoDao().snapshot().isEmpty());
+    }
+
+    @Test public void registrationsPersistWithoutTransactionsAndIgnoreCaseDuplicates() {
+        db = Room.inMemoryDatabaseBuilder(RuntimeEnvironment.getApplication(), AppDatabase.class).allowMainThreadQueries().build();
+        db.lancamentoDao().cadastrar(new com.lucas.financeflow.data.model.Cadastro("CONTA", "Poupança"));
+        db.lancamentoDao().cadastrar(new com.lucas.financeflow.data.model.Cadastro("CONTA", "poupança"));
+        db.lancamentoDao().cadastrar(new com.lucas.financeflow.data.model.Cadastro("ORIGEM", "Trabalho"));
+        assertEquals(2, db.lancamentoDao().snapshotCadastros().size());
+        assertTrue(db.lancamentoDao().snapshot().isEmpty());
     }
 }

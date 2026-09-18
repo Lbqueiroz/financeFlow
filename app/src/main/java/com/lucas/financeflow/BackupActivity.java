@@ -37,7 +37,9 @@ public class BackupActivity extends BaseActivity {
         IO.execute(() -> {
             String mensagem;
             try {
-                String content = BackupCodec.encode(AppDatabase.getInstance(this).lancamentoDao().snapshot());
+                AppDatabase db = AppDatabase.getInstance(this);
+                BackupCodec.Documento snapshot = db.runInTransaction(() -> new BackupCodec.Documento(db.lancamentoDao().snapshot(), db.lancamentoDao().snapshotCadastros()));
+                String content = BackupCodec.encode(snapshot.itens, snapshot.cadastros);
                 try (OutputStream stream = getContentResolver().openOutputStream(uri, "wt")) {
                     if (stream == null) throw new IOException();
                     stream.write(content.getBytes(StandardCharsets.UTF_8));
@@ -58,20 +60,20 @@ public class BackupActivity extends BaseActivity {
                     if (bytes.size() + count > 20 * 1024 * 1024) throw new IOException("Arquivo muito grande");
                     bytes.write(buffer, 0, count);
                 }
-                List<Lancamento> itens = BackupCodec.decode(new String(bytes.toByteArray(), StandardCharsets.UTF_8));
+                BackupCodec.Documento itens = BackupCodec.decodeCompleto(new String(bytes.toByteArray(), StandardCharsets.UTF_8));
                 runOnUiThread(() -> confirmar(itens));
             } catch (Exception ex) { runOnUiThread(() -> resposta("Backup inválido ou inacessível. Nenhum dado foi alterado.")); }
         });
     }
-    private void confirmar(List<Lancamento> itens) {
+    private void confirmar(BackupCodec.Documento itens) {
         if (isDestroyed() || isFinishing()) return;
         new AlertDialog.Builder(this).setTitle("Substituir o histórico?")
-                .setMessage("O backup contém " + itens.size() + " lançamento(s). Todos os lançamentos atuais serão substituídos. Salve um backup do histórico atual antes de continuar.")
+                .setMessage("O backup contém " + itens.itens.size() + " lançamento(s). O histórico e os cadastros atuais serão substituídos. Salve um backup antes de continuar.")
                 .setNegativeButton("Cancelar", (d, w) -> ocupado(false))
                 .setOnCancelListener(d -> ocupado(false))
                 .setPositiveButton("Restaurar", (d, w) -> IO.execute(() -> {
                     try {
-                        AppDatabase.getInstance(this).lancamentoDao().restaurar(itens);
+                        AppDatabase.getInstance(this).lancamentoDao().restaurarCompleto(itens.itens, itens.cadastros);
                         runOnUiThread(() -> resposta("Backup restaurado"));
                     } catch (RuntimeException ex) { runOnUiThread(() -> resposta("Falha na restauração. Seu histórico foi preservado.")); }
                 })).show();

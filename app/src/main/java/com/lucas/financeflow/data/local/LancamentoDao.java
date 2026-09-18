@@ -8,11 +8,24 @@ import androidx.room.Query;
 import androidx.room.Update;
 
 import com.lucas.financeflow.data.model.Lancamento;
+import com.lucas.financeflow.data.model.Cadastro;
 
 import java.util.List;
 
 @Dao
 public interface  LancamentoDao {
+    @Query("SELECT * FROM cadastros ORDER BY tipo, nome COLLATE NOCASE")
+    LiveData<List<Cadastro>> cadastros();
+
+    @Query("SELECT * FROM cadastros ORDER BY tipo, nome COLLATE NOCASE")
+    List<Cadastro> snapshotCadastros();
+
+    @Insert(onConflict = androidx.room.OnConflictStrategy.IGNORE)
+    void cadastrar(Cadastro cadastro);
+
+    @Query("DELETE FROM cadastros")
+    void limparCadastros();
+
     @Insert
     void inserir(Lancamento lancamento);
 
@@ -33,8 +46,19 @@ public interface  LancamentoDao {
 
     @androidx.room.Transaction
     default void restaurar(List<Lancamento> itens) {
+        restaurarCompleto(itens, java.util.Collections.emptyList());
+    }
+
+    @androidx.room.Transaction
+    default void restaurarCompleto(List<Lancamento> itens, List<Cadastro> cadastros) {
         limpar();
+        limparCadastros();
         inserirTodos(itens);
+        for (Cadastro cadastro : cadastros) cadastrar(cadastro);
+        for (Lancamento item : itens) {
+            if (item.conta != null && !item.conta.trim().isEmpty()) cadastrar(new Cadastro(Cadastro.CONTA, item.conta.trim()));
+            if (item.origemDestino != null && !item.origemDestino.trim().isEmpty()) cadastrar(new Cadastro(Cadastro.ORIGEM, item.origemDestino.trim()));
+        }
     }
 
     @Delete
