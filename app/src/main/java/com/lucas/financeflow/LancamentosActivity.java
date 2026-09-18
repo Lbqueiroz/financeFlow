@@ -34,11 +34,11 @@ public class LancamentosActivity extends BaseActivity {
         mes = getIntent().getStringExtra("mes");
         repository = new FinanceiroRepository(this);
         LinearLayout body = tela("Lançamentos", mes == null ? "Todo o histórico" : "Movimentações de " + mes.substring(5) + "/" + mes.substring(0, 4), false);
-        busca = campo(body, "Busca", "Descrição, categoria, conta ou pessoa", 201);
-        tipo = seletor(body, new String[]{"Todos os tipos", "Entradas", "Saídas"}, 202);
+        busca = campo(body, "Busca", "Descrição, categoria, conta ou pessoa", R.id.lista_busca);
+        tipo = seletor(body, new String[]{"Todos os tipos", "Entradas", "Saídas"}, R.id.lista_tipo);
         tipo.setContentDescription("Filtrar por tipo");
         resumo = texto(body, "Carregando…", 16);
-        RecyclerView recycler = new RecyclerView(this); recycler.setId(203);
+        RecyclerView recycler = new RecyclerView(this); recycler.setId(R.id.lista_itens);
         recycler.setLayoutManager(new LinearLayoutManager(this));
         adapter = new LancamentoAdapter(new LancamentoAdapter.OnLancamentoClickListener() {
             public void onEditar(Lancamento item) { startActivity(new Intent(LancamentosActivity.this, AddLancamentoActivity.class).putExtra("id", item.id)); }
@@ -105,3 +105,4 @@ public class LancamentosActivity extends BaseActivity {
         });
     }
 }
+

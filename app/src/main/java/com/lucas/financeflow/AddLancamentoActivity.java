@@ -15,25 +15,35 @@ public class AddLancamentoActivity extends BaseActivity {
     private Lancamento original;
     private boolean carregado;
     private FinanceiroRepository repository;
+    private SaveViewModel saveModel;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         repository = new FinanceiroRepository(this);
+        saveModel = new androidx.lifecycle.ViewModelProvider(this).get(SaveViewModel.class);
         int id = getIntent().getIntExtra("id", 0);
         LinearLayout body = tela(id == 0 ? "Novo lançamento" : "Editar lançamento", "Organize os detalhes da sua movimentação.", true);
-        descricao = campo(body, "Descrição", "Ex.: supermercado", 101);
+        descricao = campo(body, "Descrição", "Ex.: supermercado", R.id.form_descricao);
         descricao.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        valor = campo(body, "Valor (R$)", "0,00", 102);
+        valor = campo(body, "Valor (R$)", "0,00", R.id.form_valor);
         valor.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
         rotulo(body, "Tipo");
-        tipo = seletor(body, new String[]{"Entrada", "Saída"}, 103);
-        categoria = sugestoes(body, "Categoria", new String[]{"Salário", "Renda extra", "Moradia", "Alimentação", "Transporte", "Saúde", "Lazer", "Conta fixa", "Cartão", "Terceiros", "Outros"}, 104);
-        conta = sugestoes(body, "Conta", new String[]{"INTER", "Crédito INTER", "NUBANK", "Crédito NUBANK", "SANTANDER", "CAIXA", "SHOPEE PAY", "MERCADO PAGO", "Dinheiro", "Outros"}, 105);
-        pessoa = sugestoes(body, "Origem / destino (opcional)", new String[]{"Eu", "Mãe", "Pai", "Amor", "Luiz", "Shopee"}, 106);
+        tipo = seletor(body, new String[]{"Entrada", "Saída"}, R.id.form_tipo);
+        categoria = sugestoes(body, "Categoria", new String[]{"Salário", "Renda extra", "Moradia", "Alimentação", "Transporte", "Saúde", "Lazer", "Conta fixa", "Cartão", "Terceiros", "Outros"}, R.id.form_categoria);
+        conta = sugestoes(body, "Conta", new String[]{"INTER", "Crédito INTER", "NUBANK", "Crédito NUBANK", "SANTANDER", "CAIXA", "SHOPEE PAY", "MERCADO PAGO", "Dinheiro", "Outros"}, R.id.form_conta);
+        pessoa = sugestoes(body, "Origem / destino (opcional)", new String[]{"Eu", "Mãe", "Pai", "Amor", "Luiz", "Shopee"}, R.id.form_pessoa);
         dataIso = state == null ? FinanceUtils.hoje() : state.getString("data", FinanceUtils.hoje());
         data = botao(body, "Data: " + FinanceUtils.dataVisivel(dataIso), v -> escolherData());
         salvar = botao(body, "Salvar lançamento", v -> salvar());
         botao(body, "Cancelar", v -> finish());
+        saveModel.estado.observe(this, status -> {
+            salvar.setEnabled(status != 1 && (id == 0 || original != null));
+            if (status == 2) { Toast.makeText(this, "Lançamento salvo", Toast.LENGTH_SHORT).show(); finish(); }
+            if (status == 3) {
+                Toast.makeText(this, "Não foi possível salvar. Tente novamente.", Toast.LENGTH_LONG).show();
+                saveModel.estado.setValue(0);
+            }
+        });
         if (id != 0) {
             salvar.setEnabled(false);
             repository.porId(id).observe(this, item -> {
@@ -49,7 +59,7 @@ public class AddLancamentoActivity extends BaseActivity {
                     dataIso = item.data;
                     data.setText("Data: " + FinanceUtils.dataVisivel(dataIso));
                 }
-                salvar.setEnabled(true);
+                salvar.setEnabled(!Integer.valueOf(1).equals(saveModel.estado.getValue()));
             });
         }
     }
@@ -81,13 +91,7 @@ public class AddLancamentoActivity extends BaseActivity {
                 categoria.getText().toString().trim(), dataIso, "CELULAR", "LOCAL",
                 pessoa.getText().toString().trim(), conta.getText().toString().trim());
         if (original != null) item.id = original.id;
-        salvar.setEnabled(false);
-        repository.salvar(item, ok -> {
-            if (isFinishing() || isDestroyed()) return;
-            salvar.setEnabled(true);
-            Toast.makeText(this, ok ? "Lançamento salvo" : "Não foi possível salvar. Tente novamente.", Toast.LENGTH_LONG).show();
-            if (ok) finish();
-        });
+        saveModel.salvar(item);
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
@@ -95,3 +99,4 @@ public class AddLancamentoActivity extends BaseActivity {
         super.onSaveInstanceState(out);
     }
 }
+

@@ -1,0 +1,11 @@
+<resources>
+    <item name="form_descricao" type="id" />
+    <item name="form_valor" type="id" />
+    <item name="form_tipo" type="id" />
+    <item name="form_categoria" type="id" />
+    <item name="form_conta" type="id" />
+    <item name="form_pessoa" type="id" />
+    <item name="lista_busca" type="id" />
+    <item name="lista_tipo" type="id" />
+    <item name="lista_itens" type="id" />
+</resources>
