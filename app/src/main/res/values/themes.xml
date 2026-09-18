@@ -1,12 +1,18 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.Financeflow" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">#216B57</item>
+<resources>
+    <style name="Base.Theme.Financeflow" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">#176B53</item>
         <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#176B53</item>
+        <item name="colorSurface">#FFFFFF</item>
+        <item name="colorSurfaceVariant">#EAF2EE</item>
+        <item name="colorOnSurface">#19382E</item>
+        <item name="android:colorBackground">#F4F7F5</item>
+        <item name="android:windowBackground">#F4F7F5</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
         <item name="android:windowLightStatusBar">true</item>
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="android:statusBarColor">#F4F7F5</item>
+        <item name="android:navigationBarColor">#F4F7F5</item>
     </style>
-
     <style name="Theme.Financeflow" parent="Base.Theme.Financeflow" />
 </resources>

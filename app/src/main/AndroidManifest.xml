@@ -14,6 +14,8 @@
         <activity android:name=".AddLancamentoActivity" />
         <activity android:name=".LancamentosActivity" />
         <activity android:name=".BackupActivity" />
+        <activity android:name=".ContasActivity" />
+        <activity android:name=".CategoriasActivity" />
 
         <activity
             android:name=".MainActivity"

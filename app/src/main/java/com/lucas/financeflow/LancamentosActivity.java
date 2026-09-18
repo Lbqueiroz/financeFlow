@@ -19,6 +19,7 @@ import java.util.*;
 import java.util.concurrent.Executors;
 
 public class LancamentosActivity extends BaseActivity {
+    @Override protected int tabAtual() { return R.id.nav_lancamentos; }
     private List<Lancamento> todos = new ArrayList<>(), visiveis = new ArrayList<>();
     private LancamentoAdapter adapter;
     private FinanceiroRepository repository;
@@ -34,6 +35,7 @@ public class LancamentosActivity extends BaseActivity {
         mes = getIntent().getStringExtra("mes");
         repository = new FinanceiroRepository(this);
         LinearLayout body = tela("Lançamentos", mes == null ? "Todo o histórico" : "Movimentações de " + mes.substring(5) + "/" + mes.substring(0, 4), false);
+        if (mes != null) secundario(body, "Mostrar todo o histórico", v -> { getIntent().removeExtra("mes"); recreate(); });
         busca = campo(body, "Busca", "Descrição, categoria, conta ou pessoa", R.id.lista_busca);
         tipo = seletor(body, new String[]{"Todos os tipos", "Entradas", "Saídas"}, R.id.lista_tipo);
         tipo.setContentDescription("Filtrar por tipo");
@@ -46,10 +48,9 @@ public class LancamentosActivity extends BaseActivity {
         });
         recycler.setAdapter(adapter);
         body.addView(recycler, new LinearLayout.LayoutParams(-1, 0, 1));
-        exportar = botao(body, "Exportar lista em CSV", v -> arquivo.launch("financeflow-" + FinanceUtils.hoje() + ".csv"));
+        exportar = secundario(body, "Exportar lista em CSV", v -> arquivo.launch("financeflow-" + FinanceUtils.hoje() + ".csv"));
         exportar.setEnabled(false);
         botao(body, "+ Novo lançamento", v -> startActivity(new Intent(this, AddLancamentoActivity.class)));
-        botao(body, "Voltar", v -> finish());
         busca.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             public void onTextChanged(CharSequence s, int start, int before, int count) { filtrar(); }

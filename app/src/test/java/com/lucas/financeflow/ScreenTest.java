@@ -28,8 +28,8 @@ public class ScreenTest {
             AddLancamentoActivity activity = controller.get();
             ((EditText) activity.findViewById(R.id.form_descricao)).setText("Compra de teste");
             ((EditText) activity.findViewById(R.id.form_valor)).setText("12,50");
-            ((EditText) activity.findViewById(R.id.form_categoria)).setText("Alimentação");
-            ((EditText) activity.findViewById(R.id.form_conta)).setText("INTER");
+            ((Spinner) activity.findViewById(R.id.form_categoria)).setSelection(3);
+            ((Spinner) activity.findViewById(R.id.form_conta)).setSelection(0);
             button(activity.findViewById(android.R.id.content), "Salvar lançamento").performClick();
             aguardar(activity::isFinishing);
         }
@@ -89,3 +89,4 @@ public class ScreenTest {
         return null;
     }
 }
+

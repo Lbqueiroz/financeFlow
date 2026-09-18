@@ -11,31 +11,31 @@ import java.util.*;
 public class MainActivity extends BaseActivity {
     private final Calendar mes = Calendar.getInstance();
     private List<Lancamento> itens = new ArrayList<>();
-    private TextView periodo, saldo, entradas, saidas, categorias, contas;
+    private TextView periodo, saldo, entradas, saidas;
     private LinearLayout ultimos;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         if (state != null) mes.setTimeInMillis(state.getLong("mes"));
-        LinearLayout body = tela("FinanceFlow", "Seu dinheiro, com clareza. Tudo salvo neste aparelho.", true);
-        periodo = texto(body, "", 22);
+        LinearLayout body = tela("Seu resumo", "Uma visão simples do seu mês.", true);
+        periodo = texto(body, "", 20);
         LinearLayout navegacao = new LinearLayout(this); body.addView(navegacao);
-        Button anterior = new Button(this); anterior.setText("‹ Anterior"); anterior.setContentDescription("Mês anterior");
-        Button proximo = new Button(this); proximo.setText("Próximo ›"); proximo.setContentDescription("Próximo mês");
-        navegacao.addView(anterior, new LinearLayout.LayoutParams(0, dp(52), 1));
-        navegacao.addView(proximo, new LinearLayout.LayoutParams(0, dp(52), 1));
-        anterior.setOnClickListener(v -> mudarMes(-1)); proximo.setOnClickListener(v -> mudarMes(1));
-        saldo = texto(body, "", 30); saldo.setTypeface(null, android.graphics.Typeface.BOLD);
-        entradas = texto(body, "", 18); saidas = texto(body, "", 18);
+        Button anterior = secundario(navegacao, "‹ Anterior", v -> mudarMes(-1));
+        Button proximo = secundario(navegacao, "Próximo ›", v -> mudarMes(1));
+        LinearLayout.LayoutParams left = new LinearLayout.LayoutParams(0, -2, 1); left.setMargins(0, 0, dp(6), 0); anterior.setLayoutParams(left);
+        proximo.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
+        anterior.setContentDescription("Mês anterior"); proximo.setContentDescription("Próximo mês");
+        LinearLayout destaque = card(body);
+        android.graphics.drawable.GradientDrawable fundo = new android.graphics.drawable.GradientDrawable();
+        fundo.setColor(android.graphics.Color.rgb(23,107,83)); fundo.setCornerRadius(dp(20)); destaque.setBackground(fundo);
+        texto(destaque, "SALDO DO MÊS", 12).setTextColor(android.graphics.Color.rgb(212,239,224));
+        saldo = texto(destaque, "", 34); saldo.setTextColor(android.graphics.Color.WHITE); saldo.setTypeface(null, android.graphics.Typeface.BOLD);
+        LinearLayout totais = card(body);
+        entradas = texto(totais, "", 17); entradas.setTextColor(android.graphics.Color.rgb(23,107,83));
+        saidas = texto(totais, "", 17); saidas.setTextColor(android.graphics.Color.rgb(169,63,53));
         botao(body, "+ Novo lançamento", v -> startActivity(new Intent(this, AddLancamentoActivity.class)));
-        botao(body, "Ver lançamentos do mês", v -> startActivity(new Intent(this, LancamentosActivity.class).putExtra("mes", chaveMes())));
-        botao(body, "Todo o histórico / exportar", v -> startActivity(new Intent(this, LancamentosActivity.class)));
-        botao(body, "Backup e restauração", v -> startActivity(new Intent(this, BackupActivity.class)));
-        texto(body, "Despesas por categoria", 22);
-        categorias = texto(body, "", 16);
-        texto(body, "Saldo por conta · todo o histórico", 22);
-        contas = texto(body, "", 16);
-        texto(body, "Últimos lançamentos do mês", 22);
+        secundario(body, "Ver lançamentos do mês", v -> startActivity(new Intent(this, LancamentosActivity.class).putExtra("mes", chaveMes())));
+        rotulo(body, "ÚLTIMOS LANÇAMENTOS");
         ultimos = new LinearLayout(this); ultimos.setOrientation(LinearLayout.VERTICAL); body.addView(ultimos);
         new FinanceiroRepository(this).listarTodos().observe(this, lista -> { itens = lista; atualizar(); });
         atualizar();
@@ -45,36 +45,23 @@ public class MainActivity extends BaseActivity {
     private void atualizar() {
         periodo.setText(new SimpleDateFormat("MMMM 'de' yyyy", FinanceUtils.BR).format(mes.getTime()));
         long entrada = 0, saida = 0;
-        Map<String, Long> porCategoria = new TreeMap<>(), porConta = new TreeMap<>();
         List<Lancamento> mensal = new ArrayList<>();
         for (Lancamento item : itens) {
-            long valor = FinanceUtils.centavos(item.valor);
-            boolean receita = "ENTRADA".equals(item.tipo);
-            String conta = item.conta == null ? "Sem conta" : item.conta;
-            porConta.put(conta, porConta.getOrDefault(conta, 0L) + (receita ? valor : -valor));
             if (item.data == null || !item.data.startsWith(chaveMes())) continue;
             mensal.add(item);
-            if (receita) entrada += valor;
-            else { saida += valor; String cat = item.categoria == null ? "Outros" : item.categoria; porCategoria.put(cat, porCategoria.getOrDefault(cat, 0L) + valor); }
+            if ("ENTRADA".equals(item.tipo)) entrada += FinanceUtils.centavos(item.valor);
+            else saida += FinanceUtils.centavos(item.valor);
         }
-        saldo.setText("Saldo do mês\n" + FinanceUtils.moeda(entrada - saida));
-        entradas.setText("Entradas  " + FinanceUtils.moeda(entrada));
-        saidas.setText("Saídas  " + FinanceUtils.moeda(saida));
-        categorias.setText(resumo(porCategoria, "Nenhuma despesa neste mês."));
-        contas.setText(resumo(porConta, "Cadastre seu primeiro lançamento para começar."));
+        saldo.setText(FinanceUtils.moeda(entrada - saida));
+        entradas.setText("↗ Entradas     " + FinanceUtils.moeda(entrada));
+        saidas.setText("↙ Saídas         " + FinanceUtils.moeda(saida));
         ultimos.removeAllViews();
-        if (mensal.isEmpty()) texto(ultimos, "Seu mês começa aqui. Adicione uma entrada ou saída.", 16);
-        for (int i = 0; i < Math.min(5, mensal.size()); i++) {
+        if (mensal.isEmpty()) texto(card(ultimos), "Nenhum lançamento neste mês.\nToque em + Novo lançamento para começar.", 16);
+        for (int i = 0; i < Math.min(3, mensal.size()); i++) {
             Lancamento item = mensal.get(i);
-            botao(ultimos, item.descricao + " · " + ("ENTRADA".equals(item.tipo) ? "+ " : "− ") + FinanceUtils.moeda(FinanceUtils.centavos(item.valor)) + "\n" + FinanceUtils.dataVisivel(item.data),
+            secundario(ultimos, item.descricao + " · " + ("ENTRADA".equals(item.tipo) ? "+ " : "− ") + FinanceUtils.moeda(FinanceUtils.centavos(item.valor)) + "\n" + FinanceUtils.dataVisivel(item.data),
                     v -> startActivity(new Intent(this, AddLancamentoActivity.class).putExtra("id", item.id)));
         }
-    }
-    private String resumo(Map<String, Long> dados, String vazio) {
-        if (dados.isEmpty()) return vazio;
-        StringBuilder text = new StringBuilder();
-        for (Map.Entry<String, Long> item : dados.entrySet()) text.append(item.getKey()).append("   ").append(FinanceUtils.moeda(item.getValue())).append('\n');
-        return text.toString().trim();
     }
     @Override protected void onSaveInstanceState(Bundle out) { out.putLong("mes", mes.getTimeInMillis()); super.onSaveInstanceState(out); }
 }

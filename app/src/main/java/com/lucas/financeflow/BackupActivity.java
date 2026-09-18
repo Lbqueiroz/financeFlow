@@ -14,6 +14,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class BackupActivity extends BaseActivity {
+    @Override protected int tabAtual() { return R.id.nav_backup; }
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
     private Button salvar, restaurar;
     private final ActivityResultLauncher<String> destino = registerForActivityResult(new ActivityResultContracts.CreateDocument("application/json"), this::salvarBackup);
@@ -25,9 +26,8 @@ public class BackupActivity extends BaseActivity {
         texto(body, "Salve uma cópia em uma pasta de sua escolha. Para recuperar seus dados em outro aparelho, abra o arquivo pela opção Restaurar backup.", 17);
         texto(body, "O arquivo contém suas movimentações financeiras. Guarde-o em um local privado.", 15);
         salvar = botao(body, "Salvar backup completo", v -> destino.launch("financeflow-backup-" + FinanceUtils.hoje() + ".json"));
-        restaurar = botao(body, "Restaurar backup", v -> origem.launch(new String[]{"application/json", "text/plain", "application/octet-stream"}));
+        restaurar = secundario(body, "Restaurar backup", v -> origem.launch(new String[]{"application/json", "text/plain", "application/octet-stream"}));
         texto(body, "A restauração substitui todo o histórico atual após sua confirmação. A exportação CSV fica na tela de lançamentos e serve para consulta em planilhas.", 15);
-        botao(body, "Voltar", v -> finish());
     }
     private void ocupado(boolean busy) { salvar.setEnabled(!busy); restaurar.setEnabled(!busy); }
     private void resposta(String text) { if (!isDestroyed()) { ocupado(false); Toast.makeText(this, text, Toast.LENGTH_LONG).show(); } }

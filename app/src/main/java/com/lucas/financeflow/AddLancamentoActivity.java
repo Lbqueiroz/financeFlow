@@ -8,8 +8,8 @@ import com.lucas.financeflow.data.repository.FinanceiroRepository;
 import java.util.*;
 
 public class AddLancamentoActivity extends BaseActivity {
-    private EditText descricao, valor, categoria, conta, pessoa;
-    private Spinner tipo;
+    private EditText descricao, valor;
+    private Spinner tipo, categoria, conta, pessoa;
     private Button salvar, data;
     private String dataIso;
     private Lancamento original;
@@ -29,13 +29,18 @@ public class AddLancamentoActivity extends BaseActivity {
         valor.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
         rotulo(body, "Tipo");
         tipo = seletor(body, new String[]{"Entrada", "Saída"}, R.id.form_tipo);
-        categoria = sugestoes(body, "Categoria", new String[]{"Salário", "Renda extra", "Moradia", "Alimentação", "Transporte", "Saúde", "Lazer", "Conta fixa", "Cartão", "Terceiros", "Outros"}, R.id.form_categoria);
-        conta = sugestoes(body, "Conta", new String[]{"INTER", "Crédito INTER", "NUBANK", "Crédito NUBANK", "SANTANDER", "CAIXA", "SHOPEE PAY", "MERCADO PAGO", "Dinheiro", "Outros"}, R.id.form_conta);
-        pessoa = sugestoes(body, "Origem / destino (opcional)", new String[]{"Eu", "Mãe", "Pai", "Amor", "Luiz", "Shopee"}, R.id.form_pessoa);
+        categoria = opcoes(body, "Categoria", new String[]{"Salário", "Renda extra", "Moradia", "Alimentação", "Transporte", "Saúde", "Lazer", "Conta fixa", "Cartão", "Terceiros", "Outros"}, R.id.form_categoria);
+        conta = opcoes(body, "Conta", new String[]{"INTER", "Crédito INTER", "NUBANK", "Crédito NUBANK", "SANTANDER", "CAIXA", "SHOPEE PAY", "MERCADO PAGO", "Dinheiro", "Outros"}, R.id.form_conta);
+        pessoa = opcoes(body, "Origem / destino (opcional)", new String[]{"Não informado", "Eu", "Mãe", "Pai", "Amor", "Luiz", "Shopee"}, R.id.form_pessoa);
+        if (state != null) {
+            selecionar(categoria, state.getString("categoria"));
+            selecionar(conta, state.getString("conta"));
+            selecionar(pessoa, state.getString("pessoa"));
+        }
         dataIso = state == null ? FinanceUtils.hoje() : state.getString("data", FinanceUtils.hoje());
-        data = botao(body, "Data: " + FinanceUtils.dataVisivel(dataIso), v -> escolherData());
+        data = secundario(body, "Data: " + FinanceUtils.dataVisivel(dataIso), v -> escolherData());
         salvar = botao(body, "Salvar lançamento", v -> salvar());
-        botao(body, "Cancelar", v -> finish());
+        secundario(body, "Cancelar", v -> finish());
         saveModel.estado.observe(this, status -> {
             salvar.setEnabled(status != 1 && (id == 0 || original != null));
             if (status == 2) { Toast.makeText(this, "Lançamento salvo", Toast.LENGTH_SHORT).show(); finish(); }
@@ -55,13 +60,23 @@ public class AddLancamentoActivity extends BaseActivity {
                     descricao.setText(item.descricao);
                     valor.setText(String.format(FinanceUtils.BR, "%.2f", item.valor));
                     tipo.setSelection("ENTRADA".equals(item.tipo) ? 0 : 1);
-                    categoria.setText(item.categoria); conta.setText(item.conta); pessoa.setText(item.origemDestino);
+                    selecionar(categoria, item.categoria); selecionar(conta, item.conta); selecionar(pessoa, item.origemDestino);
                     dataIso = item.data;
                     data.setText("Data: " + FinanceUtils.dataVisivel(dataIso));
                 }
                 salvar.setEnabled(!Integer.valueOf(1).equals(saveModel.estado.getValue()));
             });
         }
+    }
+
+    @Override protected int tabAtual() { return 0; }
+
+    private void selecionar(Spinner spinner, String value) {
+        if (value == null || value.isEmpty()) return;
+        ArrayAdapter<String> adapter = (ArrayAdapter<String>) spinner.getAdapter();
+        int position = adapter.getPosition(value);
+        if (position < 0) { adapter.add(value); position = adapter.getPosition(value); }
+        spinner.setSelection(position);
     }
 
     private void escolherData() {
@@ -82,21 +97,25 @@ public class AddLancamentoActivity extends BaseActivity {
     }
 
     private void salvar() {
-        if (!obrigatorio(descricao) || !obrigatorio(categoria) || !obrigatorio(conta)) return;
+        if (!obrigatorio(descricao)) return;
         double quantia;
         try { quantia = FinanceUtils.parseValor(valor.getText().toString()); }
         catch (IllegalArgumentException ex) { valor.setError("Informe de R$ 0,01 a R$ 999.999.999,99, com até 2 casas decimais"); valor.requestFocus(); return; }
         Lancamento item = new Lancamento(descricao.getText().toString().trim(), quantia,
                 tipo.getSelectedItemPosition() == 0 ? "ENTRADA" : "SAIDA",
-                categoria.getText().toString().trim(), dataIso, "CELULAR", "LOCAL",
-                pessoa.getText().toString().trim(), conta.getText().toString().trim());
+                categoria.getSelectedItem().toString(), dataIso, "CELULAR", "LOCAL",
+                pessoa.getSelectedItemPosition() == 0 ? "" : pessoa.getSelectedItem().toString(), conta.getSelectedItem().toString());
         if (original != null) item.id = original.id;
         saveModel.salvar(item);
     }
 
     @Override protected void onSaveInstanceState(Bundle out) {
         out.putString("data", dataIso);
+        out.putString("categoria", categoria.getSelectedItem().toString());
+        out.putString("conta", conta.getSelectedItem().toString());
+        out.putString("pessoa", pessoa.getSelectedItem().toString());
         super.onSaveInstanceState(out);
     }
 }
+
 
