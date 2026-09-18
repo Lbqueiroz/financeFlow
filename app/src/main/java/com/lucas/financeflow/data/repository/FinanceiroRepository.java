@@ -16,16 +16,36 @@ import java.util.concurrent.Executors;
 public class FinanceiroRepository {
 
     private final LancamentoDao lancamentoDao;
-    private final ExecutorService executorService;
+    private static final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     public FinanceiroRepository(Context context){
         AppDatabase database = AppDatabase.getInstance(context);
         lancamentoDao = database.lancamentoDao();
-        executorService = Executors.newSingleThreadExecutor();
     }
 
     public void inserir(Lancamento lancamento){
         executorService.execute(() -> lancamentoDao.inserir(lancamento));
+    }
+
+    public LiveData<Lancamento> porId(int id) { return lancamentoDao.porId(id); }
+
+    public interface Resultado { void concluir(boolean sucesso); }
+
+    public void salvar(Lancamento item, Resultado resultado) {
+        executar(() -> { if (item.id == 0) lancamentoDao.inserir(item); else lancamentoDao.atualizar(item); }, resultado);
+    }
+
+    public void excluir(Lancamento item, Resultado resultado) {
+        executar(() -> lancamentoDao.deletar(item), resultado);
+    }
+
+    private void executar(Runnable operacao, Resultado resultado) {
+        executorService.execute(() -> {
+            boolean sucesso;
+            try { operacao.run(); sucesso = true; } catch (RuntimeException e) { sucesso = false; }
+            final boolean ok = sucesso;
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> resultado.concluir(ok));
+        });
     }
 
     public LiveData<List<Lancamento>> listarTodos(){

@@ -10,7 +10,7 @@ import com.lucas.financeflow.data.model.Lancamento;
 
 @Database(
         entities = {Lancamento.class},
-        version = 2,
+        version = 3,
         exportSchema = false
 )public abstract class AppDatabase extends RoomDatabase{
 
@@ -24,7 +24,17 @@ import com.lucas.financeflow.data.model.Lancamento;
                     context.getApplicationContext(),
                     AppDatabase.class, "financeFlow_db"
             )
-                    .fallbackToDestructiveMigration()
+                    .addMigrations(new androidx.room.migration.Migration(2, 3) {
+                        @Override public void migrate(androidx.sqlite.db.SupportSQLiteDatabase db) {
+                            // Recover rows written by the original form's misplaced constructor arguments.
+                            db.execSQL("UPDATE lancamentos SET conta = data, origemDestino = origem, " +
+                                    "data = syncStatus, origem = origemDestino, syncStatus = conta " +
+                                    "WHERE syncStatus GLOB '[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]' " +
+                                    "AND origemDestino = 'CELULAR'");
+                            db.execSQL("UPDATE lancamentos SET data = substr(data,7,4) || '-' || substr(data,4,2) || '-' || substr(data,1,2) " +
+                                    "WHERE data GLOB '[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]'");
+                        }
+                    })
                     .build();
         }
         return INSTANCE;

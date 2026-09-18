@@ -16,8 +16,11 @@ public interface  LancamentoDao {
     @Insert
     void inserir(Lancamento lancamento);
 
-    @Query("SELECT * FROM lancamentos ORDER BY data DESC")
+    @Query("SELECT * FROM lancamentos ORDER BY data DESC, id DESC")
     LiveData<List<Lancamento>> listarTodos();
+
+    @Query("SELECT * FROM lancamentos WHERE id = :id")
+    LiveData<Lancamento> porId(int id);
 
     @Query("SELECT COALESCE(SUM(valor), 0) FROM lancamentos WHERE tipo = 'ENTRADA'")
     LiveData<Double> totalEntradas();
