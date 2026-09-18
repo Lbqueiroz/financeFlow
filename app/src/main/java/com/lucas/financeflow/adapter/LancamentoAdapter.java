@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.lucas.financeflow.R;
+import com.lucas.financeflow.FinanceUtils;
 import com.lucas.financeflow.data.model.Lancamento;
 
 import java.util.ArrayList;
@@ -43,10 +44,10 @@ public class LancamentoAdapter extends RecyclerView.Adapter<LancamentoAdapter.La
         Lancamento lancamento = lancamentos.get(position);
 
         holder.txtDescricao.setText(lancamento.descricao);
-        holder.txtValor.setText("R$ " + String.format("%.2f", lancamento.valor));
+        holder.txtValor.setText(("ENTRADA".equals(lancamento.tipo) ? "+ " : "− ") + FinanceUtils.moeda(FinanceUtils.centavos(lancamento.valor)));
 
         holder.txtDetalhes.setText(
-                lancamento.tipo + " • " +
+                FinanceUtils.dataVisivel(lancamento.data) + " • " +
                         lancamento.categoria + " • " +
                         lancamento.conta + " • " +
                         lancamento.origemDestino
@@ -54,6 +55,8 @@ public class LancamentoAdapter extends RecyclerView.Adapter<LancamentoAdapter.La
 
         holder.btnEditar.setOnClickListener(v -> listener.onEditar(lancamento));
         holder.btnExcluir.setOnClickListener(v -> listener.onExcluir(lancamento));
+        holder.btnEditar.setContentDescription("Editar " + lancamento.descricao);
+        holder.btnExcluir.setContentDescription("Excluir " + lancamento.descricao);
     }
 
     @Override
