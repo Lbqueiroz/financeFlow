@@ -10,7 +10,7 @@ public final class WatchImporter {
             LancamentoDao dao = db.lancamentoDao();
             if (dao.wearReceipt(entry.id) > 0) return;
             if (dao.contaExiste(entry.account) == 0) throw new IllegalArgumentException("Conta indisponível. Cadastre-a no celular e tente novamente.");
-            dao.inserir(new Lancamento("ENTRADA".equals(entry.type) ? "Entrada pelo relógio" : "Gasto pelo relógio",
+            dao.inserir(new Lancamento("ENTRADA".equals(entry.type) ? "Entrada pelo relógio" : "Saída pelo relógio",
                     java.math.BigDecimal.valueOf(entry.cents,2).doubleValue(),entry.type,entry.category,entry.date,"RELOGIO","SINCRONIZADO","",entry.account));
             dao.registrarWearReceipt(new WearReceipt(entry.id));
         });
