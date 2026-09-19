@@ -3,5 +3,5 @@
     <item android:id="@+id/nav_lancamentos" android:icon="@drawable/ic_history" android:title="Lançamentos" />
     <item android:id="@+id/nav_contas" android:icon="@drawable/ic_wallet" android:title="Contas" />
     <item android:id="@+id/nav_categorias" android:icon="@drawable/ic_category" android:title="Categorias" />
-    <item android:id="@+id/nav_backup" android:icon="@drawable/ic_backup" android:title="Backup" />
+    <item android:id="@+id/nav_backup" android:icon="@drawable/ic_more" android:title="Mais" />
 </menu>

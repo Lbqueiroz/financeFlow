@@ -25,7 +25,7 @@ public class NavigationTest {
             BottomNavigationView nav = navigation(activity.findViewById(android.R.id.content));
             assertNotNull(nav); assertEquals(5, nav.getMenu().size());
             int[] ids = {R.id.nav_lancamentos, R.id.nav_contas, R.id.nav_categorias, R.id.nav_backup};
-            Class<?>[] screens = {LancamentosActivity.class, ContasActivity.class, CategoriasActivity.class, BackupActivity.class};
+            Class<?>[] screens = {LancamentosActivity.class, ContasActivity.class, CategoriasActivity.class, MoreActivity.class};
             for (int i = 0; i < ids.length; i++) {
                 nav.setSelectedItemId(ids[i]);
                 assertEquals(screens[i].getName(), Shadows.shadowOf(activity).getNextStartedActivity().getComponent().getClassName());

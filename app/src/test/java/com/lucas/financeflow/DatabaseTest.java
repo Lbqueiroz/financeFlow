@@ -44,7 +44,7 @@ public class DatabaseTest {
         legacy.execSQL("INSERT INTO lancamentos VALUES (1, 'Mercado', 'PENDENTE', 'CELULAR', 45.5, 'SAIDA', 'Alimentação', 'INTER', 'Eu', '18-09-2026')");
         legacy.execSQL("INSERT INTO lancamentos VALUES (2, 'Salário', 'NUBANK', 'Empresa', 2500, 'ENTRADA', 'Salário', '01-08-2026', 'CELULAR', 'PENDENTE')");
         legacy.setVersion(2); legacy.close();
-        db = Room.databaseBuilder(context, AppDatabase.class, "migration-test").addMigrations(AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5).allowMainThreadQueries().build();
+        db = Room.databaseBuilder(context, AppDatabase.class, "migration-test").addMigrations(AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6).allowMainThreadQueries().build();
         List<Lancamento> items = db.lancamentoDao().snapshot();
         assertEquals(2, items.size());
         Lancamento repaired = items.get(0);
@@ -62,7 +62,7 @@ public class DatabaseTest {
         legacy.execSQL("CREATE TABLE lancamentos (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, descricao TEXT, valor REAL NOT NULL, tipo TEXT, categoria TEXT, data TEXT, origem TEXT, syncStatus TEXT)");
         legacy.execSQL("INSERT INTO lancamentos VALUES (1, 'Antigo', 100, 'ENTRADA', 'Outros', '02-01-2026', 'CELULAR', 'PENDENTE')");
         legacy.setVersion(1); legacy.close();
-        db = Room.databaseBuilder(context, AppDatabase.class, "migration-v1-test").addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5).allowMainThreadQueries().build();
+        db = Room.databaseBuilder(context, AppDatabase.class, "migration-v1-test").addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6).allowMainThreadQueries().build();
         Lancamento item = db.lancamentoDao().snapshot().get(0);
         assertEquals("Antigo", item.descricao); assertEquals("Outros", item.conta); assertEquals("2026-01-02", item.data);
     }

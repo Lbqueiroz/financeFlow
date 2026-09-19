@@ -14,6 +14,9 @@ public final class BackupCodec {
         return encode(itens, Collections.emptyList());
     }
     public static String encode(List<Lancamento> itens, List<Cadastro> cadastros) throws JSONException {
+        return encode(itens,cadastros,Collections.emptyList());
+    }
+    public static String encode(List<Lancamento> itens, List<Cadastro> cadastros, List<com.lucas.financeflow.data.model.PlanItem> plans) throws JSONException {
         JSONArray records = new JSONArray();
         for (Lancamento item : itens) {
             JSONObject record = new JSONObject();
@@ -24,7 +27,7 @@ public final class BackupCodec {
         }
         JSONArray names = new JSONArray();
         for (Cadastro item : cadastros) names.put(new JSONObject().put("tipo", item.tipo).put("nome", item.nome));
-        return new JSONObject().put("app", "FinanceFlow").put("version", 2).put("lancamentos", records).put("cadastros", names).toString(2);
+        return new JSONObject().put("app", "FinanceFlow").put("version", 3).put("lancamentos", records).put("cadastros", names).put("planning",PlanCodec.encode(plans)).toString(2);
     }
     public static List<Lancamento> decode(String text) throws JSONException {
         return decodeCompleto(text).itens;
@@ -32,12 +35,14 @@ public final class BackupCodec {
     public static class Documento {
         public final List<Lancamento> itens;
         public final List<Cadastro> cadastros;
-        public Documento(List<Lancamento> itens, List<Cadastro> cadastros) { this.itens = itens; this.cadastros = cadastros; }
+        public final List<com.lucas.financeflow.data.model.PlanItem> plans;
+        public Documento(List<Lancamento> itens, List<Cadastro> cadastros) { this(itens,cadastros,Collections.emptyList()); }
+        public Documento(List<Lancamento> itens, List<Cadastro> cadastros,List<com.lucas.financeflow.data.model.PlanItem> plans) { this.itens = itens; this.cadastros = cadastros; this.plans=plans; }
     }
     public static Documento decodeCompleto(String text) throws JSONException {
         JSONObject root = new JSONObject(text);
         int version = root.getInt("version");
-        if (!"FinanceFlow".equals(root.getString("app")) || (version != 1 && version != 2)) throw new JSONException("Formato incompatível");
+        if (!"FinanceFlow".equals(root.getString("app")) || (version < 1 || version > 3)) throw new JSONException("Formato incompatível");
         JSONArray records = root.getJSONArray("lancamentos");
         if (records.length() > 100000) throw new JSONException("Arquivo muito grande");
         List<Lancamento> itens = new ArrayList<>();
@@ -55,7 +60,7 @@ public final class BackupCodec {
                     data, "CELULAR", "LOCAL", record.optString("origemDestino", ""), obrigatorio(record, "conta")));
         }
         List<Cadastro> cadastros = new ArrayList<>();
-        if (version == 2) {
+        if (version >= 2) {
             JSONArray names = root.getJSONArray("cadastros");
             if (names.length() > 100000) throw new JSONException("Arquivo muito grande");
             for (int i = 0; i < names.length(); i++) {
@@ -69,7 +74,7 @@ public final class BackupCodec {
             cadastros.add(new Cadastro(Cadastro.CONTA, item.conta));
             if (!item.origemDestino.trim().isEmpty()) cadastros.add(new Cadastro(Cadastro.ORIGEM, item.origemDestino.trim()));
         }
-        return new Documento(itens, cadastros);
+        return new Documento(itens, cadastros,version==3?PlanCodec.decode(root.getJSONArray("planning")):Collections.emptyList());
     }
     private static String obrigatorio(JSONObject record, String key) throws JSONException {
         String value = record.getString(key).trim();

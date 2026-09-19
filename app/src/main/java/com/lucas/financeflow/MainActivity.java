@@ -13,6 +13,8 @@ public class MainActivity extends BaseActivity {
     private List<Lancamento> itens = new ArrayList<>();
     private TextView periodo, saldo, entradas, saidas;
     private LinearLayout ultimos;
+    private TextView investments, reminders;
+    private List<com.lucas.financeflow.data.model.PlanItem> plans=new ArrayList<>();
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -48,11 +50,16 @@ public class MainActivity extends BaseActivity {
         LinearLayout totais = card(body);
         entradas = texto(totais, "", 17); entradas.setTextColor(android.graphics.Color.rgb(23,107,83));
         saidas = texto(totais, "", 17); saidas.setTextColor(android.graphics.Color.rgb(169,63,53));
+        investments=texto(totais,"",15);
+        reminders=texto(body,"",15);
         botao(body, "+ Novo lançamento", v -> startActivity(new Intent(this, AddLancamentoActivity.class)));
         secundario(body, "Ver lançamentos do mês", v -> startActivity(new Intent(this, LancamentosActivity.class).putExtra("mes", chaveMes())));
+        secundario(body,"Investimentos",v -> startActivity(new Intent(this,PlanningActivity.class).putExtra("mode","ASSET")));
+        secundario(body,"Recorrências e orçamentos",v -> startActivity(new Intent(this,MoreActivity.class)));
         rotulo(body, "ÚLTIMOS LANÇAMENTOS");
         ultimos = new LinearLayout(this); ultimos.setOrientation(LinearLayout.VERTICAL); body.addView(ultimos);
         new FinanceiroRepository(this).listarTodos().observe(this, lista -> { itens = lista; atualizar(); });
+        new com.lucas.financeflow.data.repository.PlanRepository(this).observe().observe(this,lista -> {plans=lista; atualizar();});
         atualizar();
     }
     private String chaveMes() { return new SimpleDateFormat("yyyy-MM", Locale.ROOT).format(mes.getTime()); }
@@ -70,6 +77,17 @@ public class MainActivity extends BaseActivity {
         saldo.setText(FinanceUtils.moeda(entrada - saida));
         entradas.setText("↗ Entradas     " + FinanceUtils.moeda(entrada));
         saidas.setText("↙ Saídas         " + FinanceUtils.moeda(saida));
+        long applied=0,redeemed=0; int due=0,over=0;
+        for(com.lucas.financeflow.data.model.PlanItem p:plans) {
+            if(p.date.startsWith(chaveMes()+"-")) {
+                if(p.kind.equals("APPLY")) applied+=p.cents;
+                if(p.kind.equals("REDEEM")) redeemed+=p.cents;
+                if(p.kind.equals("BUDGET") && Planning.spent(itens,chaveMes(),p.category)>p.cents) over++;
+            }
+            if(p.kind.equals("RULE") && p.date.compareTo(FinanceUtils.hoje())<=0) due++;
+        }
+        investments.setText("Aplicações: "+FinanceUtils.moeda(applied)+"\nResgates: "+FinanceUtils.moeda(redeemed)+"\nMovimentação disponível no mês: "+FinanceUtils.moeda(entrada-saida-applied+redeemed)+"\nO saldo do mês acima considera entradas menos gastos.");
+        reminders.setText(due+" recorrência(s) aguardando confirmação\n"+over+" orçamento(s) acima do limite no mês selecionado");
         ultimos.removeAllViews();
         if (mensal.isEmpty()) texto(card(ultimos), "Nenhum lançamento neste mês.\nToque em + Novo lançamento para começar.", 16);
         for (int i = 0; i < Math.min(3, mensal.size()); i++) {

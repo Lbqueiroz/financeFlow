@@ -4,10 +4,14 @@ Aplicativo Android de finanças pessoais, em português, sem login ou servidor. 
 
 ## O que está pronto
 
-- Cadastro, edição e exclusão com confirmação; retorno de sucesso somente após gravar no banco.
+- Cadastro, edição e exclusão com confirmação; retorno de sucesso somente após gravar no banco. Após salvar, use Desfazer para remover um lançamento novo ou recuperar os dados anteriores de uma edição, antes de concluir.
 - Valor formatado automaticamente em reais: digite `100000` para obter `1.000,00`. Os dois últimos dígitos são os centavos. Valores devem ser positivos.
 - Campo Nome, data selecionável, entradas/saídas e seletores de categoria, conta e origem/destino. Cadastre suas próprias contas e origens na aba Contas ou diretamente no formulário; os cadastros persistem mesmo sem lançamentos. Contas e origens já usadas são importadas na atualização.
-- Menu inferior com cinco abas: Resumo, Lançamentos, Contas, Categorias e Backup. O resumo mostra saldo, entradas, saídas e últimos lançamentos do mês.
+- Menu inferior com cinco abas: Resumo, Lançamentos, Contas, Categorias e Mais. Em Mais ficam as telas de Investimentos, Transferências, Recorrências, Orçamentos e Backup. O resumo mostra entradas, gastos e aplicações/resgates separados.
+- Transferências entre contas e aplicações/resgates ajustam os saldos das contas sem virar receita ou despesa. Transferências podem ser desfeitas no próprio histórico.
+- Investimentos com nome e instituição, aplicações, resgates, atualização manual do valor atual (inclusive zero), resultado acumulado e histórico. Resgates acima do valor disponível são rejeitados; excluir um movimento que deixaria um resgate sem cobertura também é rejeitado. Aportes líquidos são aplicações menos resgates; resultado é valor atual menos aportes líquidos, não uma taxa de rentabilidade.
+- Recorrências mensais com vencimento, conta, categoria e confirmação manual a partir do vencimento. Só a confirmação cria um lançamento. O dia 31 se ajusta ao último dia de meses curtos e volta ao dia 31 nos seguintes. Confirmações repetidas não duplicam a parcela. Editar/excluir a recorrência preserva as parcelas já registradas.
+- Orçamentos por categoria e mês, com barra de consumo, saldo disponível e destaque quando ultrapassados. O resumo indica recorrências vencidas e limites ultrapassados.
 - Exclusão de contas e origens/destinos em Contas → Cadastrar contas e origens, com confirmação. Excluir um cadastro remove a opção para novos lançamentos, preservando os registros e saldos antigos. Backups v2 preservam essa exclusão.
 - Saldo acumulado por conta considerando todo o histórico.
 - Busca por nome, categoria, conta e origem, ignorando acentos e maiúsculas; filtro por tipo e por data ou intervalo inclusivo. Use `dd/MM/aa` ou `dd/MM/aaaa`; anos de dois dígitos representam 2000–2099. Preencha só a data inicial para pesquisar um dia. Datas inexistentes e intervalos invertidos são rejeitados.
@@ -28,7 +32,7 @@ O arquivo fica em `app/build/outputs/apk/debug/app-debug.apk`. Transfira-o para 
 
 No primeiro uso, cadastre uma conta na aba Contas (ou no formulário) e depois suas entradas e despesas. Para representar um saldo que já existia, crie uma entrada com nome “Saldo inicial”, categoria “Outros” e a conta correspondente. O painel mensal considera a data de cada lançamento, inclusive datas futuras; não há conciliação bancária nem distinção entre previsto e pago. Contas de cartão são etiquetas de agrupamento, sem cálculo automático de fatura ou parcelas.
 
-Para trocar de aparelho: **Backup e restauração → Salvar backup completo** no antigo, copie o JSON e use **Restaurar backup** no novo. A restauração substitui os dados atuais, não mescla históricos. PDF é um relatório para consulta ou compartilhamento, não um arquivo de restauração. Os backups exportados não são criptografados; escolha um local privado. O backup automático do Android também pode ocorrer conforme as configurações do sistema.
+Para trocar de aparelho: **Mais → Backup e restauração → Salvar backup completo** no antigo, copie o JSON e use **Restaurar backup** no novo. A restauração substitui os dados atuais, não mescla históricos. PDF é um relatório dos lançamentos de receitas/despesas para consulta ou compartilhamento; transferências e investimentos têm seus próprios históricos e são incluídos no backup JSON. Os backups exportados não são criptografados; escolha um local privado. O backup automático do Android também pode ocorrer conforme as configurações do sistema.
 
 ## Desenvolvimento e validação
 
@@ -42,10 +46,11 @@ Testes locais incluem parsing monetário, soma em centavos, paginação e render
 
 ## Dados e manutenção
 
-- O banco `financeFlow_db` está na versão 5. As migrações preservam o histórico e corrigem os campos trocados pelo formulário antigo quando o padrão conhecido é reconhecido. A versão 5 adiciona recibos de sincronização do relógio.
-- Backups JSON v2 incluem contas e origens ainda sem lançamentos. Backups v1 continuam aceitos, recuperando os cadastros a partir das movimentações. A restauração substitui tanto os lançamentos como os cadastros.
+- O banco `financeFlow_db` está na versão 6. As migrações preservam o histórico; v5 adiciona recibos do relógio e v6 adiciona o planejamento em centavos inteiros, separado da tabela de receitas/despesas.
+- Backups JSON v3 incluem planejamento e cadastros. Backups v1/v2 continuam aceitos, mas não têm investimentos, transferências, recorrências ou orçamentos: restaurá-los limpa esses registros, após aviso e confirmação. A restauração de todas as tabelas ocorre em uma única transação.
 - Datas são gravadas como `yyyy-MM-dd` e exibidas como `dd/MM/yyyy`.
 - O campo `valor` permanece `double` por compatibilidade com o banco existente; cálculos de saldo convertem cada valor em centavos inteiros.
 - O módulo Wear OS sincroniza saldo mensal e lançamentos rápidos com o celular. Veja [instalação e uso no Galaxy Watch 7](WATCH.md). Não existe integração com bancos ou nuvem própria.
 - As telas são construídas em Java por `BaseActivity`; o item do histórico usa `item_lancamento.xml`.
 - Dados demonstrativos não são inseridos no banco de produção.
+- Firebase, login, perfil e saudação por nome permanecem para uma etapa posterior; nenhuma configuração ou dependência Firebase foi adicionada.

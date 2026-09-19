@@ -80,7 +80,7 @@ public abstract class BaseActivity extends AppCompatActivity {
                 if (item.getItemId() == R.id.nav_lancamentos) destino = LancamentosActivity.class;
                 else if (item.getItemId() == R.id.nav_contas) destino = ContasActivity.class;
                 else if (item.getItemId() == R.id.nav_categorias) destino = CategoriasActivity.class;
-                else if (item.getItemId() == R.id.nav_backup) destino = BackupActivity.class;
+                else if (item.getItemId() == R.id.nav_backup) destino = MoreActivity.class;
                 startActivity(new android.content.Intent(this, destino).addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP));
                 if (!(this instanceof MainActivity)) finish();
                 return false;
