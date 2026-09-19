@@ -14,7 +14,7 @@ import com.lucas.financeflow.adapter.LancamentoAdapter;
 import com.lucas.financeflow.data.model.Lancamento;
 import com.lucas.financeflow.data.repository.FinanceiroRepository;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
+
 import java.util.*;
 import java.util.concurrent.Executors;
 
@@ -30,7 +30,7 @@ public class LancamentosActivity extends BaseActivity {
     private Button exportar;
     private Button filtroData;
     private DateRange intervalo;
-    private final ActivityResultLauncher<String> arquivo = registerForActivityResult(new ActivityResultContracts.CreateDocument("text/csv"), this::exportar);
+    private final ActivityResultLauncher<String> arquivo = registerForActivityResult(new ActivityResultContracts.CreateDocument("application/pdf"), this::exportar);
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -55,7 +55,7 @@ public class LancamentosActivity extends BaseActivity {
         });
         recycler.setAdapter(adapter);
         body.addView(recycler, new LinearLayout.LayoutParams(-1, 0, 1));
-        exportar = secundario(body, "Exportar lista em CSV", v -> arquivo.launch("financeflow-" + FinanceUtils.hoje() + ".csv"));
+        exportar = secundario(body, "Exportar relatório em PDF", v -> prepararExportacao());
         exportar.setEnabled(false);
         botao(body, "+ Novo lançamento", v -> startActivity(new Intent(this, AddLancamentoActivity.class)));
         busca.addTextChangedListener(new TextWatcher() {
@@ -122,26 +122,37 @@ public class LancamentosActivity extends BaseActivity {
                     if (!isDestroyed()) Toast.makeText(this, ok ? "Lançamento excluído" : "Não foi possível excluir. Tente novamente.", Toast.LENGTH_LONG).show();
                 })).show();
     }
+    public static class PdfExportState extends androidx.lifecycle.ViewModel {
+        List<Lancamento> items;
+        String period, filters;
+    }
+    private void prepararExportacao() {
+        PdfExportState state = new androidx.lifecycle.ViewModelProvider(this).get(PdfExportState.class);
+        state.items = new ArrayList<>(visiveis);
+        state.period = intervalo != null ? "Período: " + FinanceUtils.dataVisivel(intervalo.inicio) + " a " + FinanceUtils.dataVisivel(intervalo.fim)
+                : mes != null ? "Período: " + mes.substring(5) + "/" + mes.substring(0, 4) : "Período: todo o histórico";
+        state.filters = "Tipo: " + tipo.getSelectedItem() + (busca.getText().toString().trim().isEmpty() ? "" : " | Busca: " + busca.getText().toString().trim());
+        arquivo.launch("financeflow-" + FinanceUtils.hoje() + ".pdf");
+    }
     private void exportar(Uri uri) {
-        if (uri == null) return;
-        List<Lancamento> copia = new ArrayList<>(visiveis);
+        PdfExportState state = new androidx.lifecycle.ViewModelProvider(this).get(PdfExportState.class);
+        if (uri == null) { state.items = null; return; }
+        if (state.items == null) {
+            Toast.makeText(this, "A exportação foi interrompida. Toque em exportar novamente.", Toast.LENGTH_LONG).show(); return;
+        }
+        List<Lancamento> copia = state.items;
+        String period = state.period, filters = state.filters; state.items = null;
         java.util.concurrent.ExecutorService worker = Executors.newSingleThreadExecutor();
         worker.execute(() -> {
             boolean ok = false;
             try (OutputStream stream = getContentResolver().openOutputStream(uri, "wt")) {
                 if (stream == null) throw new IOException("Arquivo indisponível");
-                try (Writer writer = new OutputStreamWriter(stream, StandardCharsets.UTF_8)) {
-                    writer.write("\uFEFFData;Nome;Tipo;Categoria;Conta;Origem/Destino;Valor\r\n");
-                    for (Lancamento item : copia) {
-                        writer.write(FinanceUtils.csv(FinanceUtils.dataVisivel(item.data)) + ";" + FinanceUtils.csv(item.descricao) + ";" + FinanceUtils.csv(item.tipo) + ";" + FinanceUtils.csv(item.categoria) + ";" + FinanceUtils.csv(item.conta) + ";" + FinanceUtils.csv(item.origemDestino) + ";" + String.format(FinanceUtils.BR, "%.2f", item.valor) + "\r\n");
-                    }
-                }
+                TransactionPdf.write(getApplicationContext(), copia, period, filters, stream);
                 ok = true;
-            } catch (IOException | RuntimeException e) { /* Keep original data; report failure below. */ }
+            } catch (IOException | RuntimeException e) { /* Original records remain intact. */ }
             boolean sucesso = ok;
-            runOnUiThread(() -> { if (!isDestroyed()) Toast.makeText(this, sucesso ? "CSV exportado" : "Não foi possível exportar o arquivo", Toast.LENGTH_LONG).show(); });
+            runOnUiThread(() -> { if (!isDestroyed()) Toast.makeText(this, sucesso ? "PDF exportado" : "Não foi possível exportar o PDF. Tente novamente.", Toast.LENGTH_LONG).show(); });
             worker.shutdown();
         });
     }
 }
-

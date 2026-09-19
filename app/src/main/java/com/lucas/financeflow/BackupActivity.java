@@ -27,7 +27,7 @@ public class BackupActivity extends BaseActivity {
         texto(body, "O arquivo contém suas movimentações financeiras. Guarde-o em um local privado.", 15);
         salvar = botao(body, "Salvar backup completo", v -> destino.launch("financeflow-backup-" + FinanceUtils.hoje() + ".json"));
         restaurar = secundario(body, "Restaurar backup", v -> origem.launch(new String[]{"application/json", "text/plain", "application/octet-stream"}));
-        texto(body, "A restauração substitui todo o histórico atual após sua confirmação. A exportação CSV fica na tela de lançamentos e serve para consulta em planilhas.", 15);
+        texto(body, "A restauração substitui todo o histórico atual após sua confirmação. A exportação PDF fica na tela de lançamentos e serve para consultar ou compartilhar relatórios.", 15);
     }
     private void ocupado(boolean busy) { salvar.setEnabled(!busy); restaurar.setEnabled(!busy); }
     private void resposta(String text) { if (!isDestroyed()) { ocupado(false); Toast.makeText(this, text, Toast.LENGTH_LONG).show(); } }
@@ -79,3 +79,4 @@ public class BackupActivity extends BaseActivity {
                 })).show();
     }
 }
+
