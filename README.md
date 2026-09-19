@@ -11,7 +11,7 @@ Aplicativo Android de finanças pessoais, em português, sem login ou servidor. 
 - Exclusão de contas e origens/destinos em Contas → Cadastrar contas e origens, com confirmação. Excluir um cadastro remove a opção para novos lançamentos, preservando os registros e saldos antigos. Backups v2 preservam essa exclusão.
 - Saldo acumulado por conta considerando todo o histórico.
 - Busca por nome, categoria, conta e origem, ignorando acentos e maiúsculas; filtro por tipo e por data ou intervalo inclusivo. Use `dd/MM/aa` ou `dd/MM/aaaa`; anos de dois dígitos representam 2000–2099. Preencha só a data inicial para pesquisar um dia. Datas inexistentes e intervalos invertidos são rejeitados.
-- CSV da lista filtrada, com separador `;` e UTF-8, para abrir em uma planilha.
+- PDF A4 da lista filtrada, com logo, filtros aplicados, totais de entradas/saídas/saldo, detalhes completos e paginação automática.
 - Backup completo em JSON e restauração validada, com confirmação antes de substituir o histórico. A operação é atômica: uma falha mantém os dados anteriores.
 - Tema sempre claro, cartões arredondados, formulários roláveis e ajuste às barras do Android e teclado.
 - Preservação do formulário na recriação da tela e proteção contra repetição de uma gravação durante rotação.
@@ -28,7 +28,7 @@ O arquivo fica em `app/build/outputs/apk/debug/app-debug.apk`. Transfira-o para 
 
 No primeiro uso, cadastre uma conta na aba Contas (ou no formulário) e depois suas entradas e despesas. Para representar um saldo que já existia, crie uma entrada com nome “Saldo inicial”, categoria “Outros” e a conta correspondente. O painel mensal considera a data de cada lançamento, inclusive datas futuras; não há conciliação bancária nem distinção entre previsto e pago. Contas de cartão são etiquetas de agrupamento, sem cálculo automático de fatura ou parcelas.
 
-Para trocar de aparelho: **Backup e restauração → Salvar backup completo** no antigo, copie o JSON e use **Restaurar backup** no novo. A restauração substitui os dados atuais, não mescla históricos. CSV é uma exportação para consulta, não um arquivo de restauração. Os backups exportados não são criptografados; escolha um local privado. O backup automático do Android também pode ocorrer conforme as configurações do sistema.
+Para trocar de aparelho: **Backup e restauração → Salvar backup completo** no antigo, copie o JSON e use **Restaurar backup** no novo. A restauração substitui os dados atuais, não mescla históricos. PDF é um relatório para consulta ou compartilhamento, não um arquivo de restauração. Os backups exportados não são criptografados; escolha um local privado. O backup automático do Android também pode ocorrer conforme as configurações do sistema.
 
 ## Desenvolvimento e validação
 
@@ -38,7 +38,7 @@ Abra a raiz no Android Studio. O projeto usa Java 11 como nível de linguagem, J
 .\gradlew.bat testDebugUnitTest lintDebug assembleDebug
 ```
 
-Testes locais incluem parsing monetário, soma em centavos, CSV, ida e volta de backup, arquivo inválido, migrações do banco v1/v2, CRUD, rollback da restauração e fluxos de formulário/cadastro/edição/busca com Robolectric. Robolectric usa Android API 28 e não substitui a conferência visual em aparelho físico, especialmente no Android 15/16.
+Testes locais incluem parsing monetário, soma em centavos, paginação e renderização do relatório PDF, ida e volta de backup, arquivo inválido, migrações do banco v1/v2, CRUD, rollback da restauração e fluxos de formulário/cadastro/edição/busca com Robolectric. Robolectric usa Android API 28 e não substitui a conferência em aparelho físico, especialmente no Android 15/16. O layout do relatório é validado pelo mesmo renderizador Canvas do app; a gravação nativa via PdfDocument deve ser conferida no celular, pois não é implementada pelo ambiente de testes.
 
 ## Dados e manutenção
 
