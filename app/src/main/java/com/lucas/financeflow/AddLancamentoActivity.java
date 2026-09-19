@@ -29,7 +29,7 @@ public class AddLancamentoActivity extends BaseActivity {
         MoneyInput.attach(valor);
         rotulo(body, "Tipo");
         tipo = seletor(body, new String[]{"Entrada", "Saída"}, R.id.form_tipo);
-        categoria = opcoes(body, "Categoria", new String[]{"Salário", "Renda extra", "Moradia", "Alimentação", "Transporte", "Saúde", "Lazer", "Conta fixa", "Cartão", "Terceiros", "Outros"}, R.id.form_categoria);
+        categoria = opcoes(body, "Categoria", com.lucas.financeflow.wearlink.CategoryCatalog.all(), R.id.form_categoria);
         conta = opcoes(body, "Conta", new String[]{"Selecione uma conta"}, R.id.form_conta);
         secundario(body, "+ Cadastrar conta", v -> cadastrar("CONTA", nome -> selecionar(conta, nome)));
         pessoa = opcoes(body, "Origem / destino (opcional)", new String[]{"Não informado"}, R.id.form_pessoa);
@@ -52,8 +52,13 @@ public class AddLancamentoActivity extends BaseActivity {
         salvar = botao(body, "Salvar lançamento", v -> salvar());
         secundario(body, "Cancelar", v -> finish());
         saveModel.estado.observe(this, status -> {
-            salvar.setEnabled(status != 1 && (id == 0 || original != null));
-            if (status == 2) { Toast.makeText(this, "Lançamento salvo", Toast.LENGTH_SHORT).show(); finish(); }
+            salvar.setEnabled((status == 0 || status == 3) && (id == 0 || original != null));
+            if (status == 2) {
+                LinearLayout done=tela("Lançamento salvo", "Você pode desfazer se salvou por engano.", true);
+                botao(done,"Concluir",v -> finish());
+                secundario(done,"Desfazer",v -> {v.setEnabled(false); saveModel.undo(ok -> {if(isDestroyed()) return; if(ok) {Toast.makeText(this,"Alteração desfeita",Toast.LENGTH_SHORT).show(); finish();} else Toast.makeText(this,"Não foi possível desfazer. Tente novamente.",Toast.LENGTH_LONG).show();});});
+            }
+            if (status == 5) finish();
             if (status == 3) {
                 Toast.makeText(this, "Não foi possível salvar. Tente novamente.", Toast.LENGTH_LONG).show();
                 saveModel.estado.setValue(0);
@@ -66,6 +71,7 @@ public class AddLancamentoActivity extends BaseActivity {
                 carregado = true;
                 if (item == null) { Toast.makeText(this, "Lançamento não encontrado", Toast.LENGTH_LONG).show(); finish(); return; }
                 original = item;
+                saveModel.previous(item);
                 if (state == null) {
                     descricao.setText(item.descricao);
                     valor.setText(String.format(FinanceUtils.BR, "%.2f", item.valor));

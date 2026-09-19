@@ -111,7 +111,8 @@ public class ScreenTest {
             aguardar(() -> ((Spinner) activity.findViewById(R.id.form_conta)).getCount() > 1);
             ((Spinner) activity.findViewById(R.id.form_conta)).setSelection(1);
             button(activity.findViewById(android.R.id.content), "Salvar lançamento").performClick();
-            aguardar(activity::isFinishing);
+            aguardar(() -> button(activity.findViewById(android.R.id.content),"Concluir")!=null);
+            button(activity.findViewById(android.R.id.content),"Concluir").performClick();
         }
         List<Lancamento> items = CompletableFuture.supplyAsync(() -> db.lancamentoDao().snapshot()).get();
         assertEquals(1, items.size()); assertEquals(12.5, items.get(0).valor, 0); assertEquals("INTER", items.get(0).conta);
@@ -121,7 +122,8 @@ public class ScreenTest {
             aguardar(() -> description.getText().length() > 0);
             description.setText("Mercado editado");
             button(controller.get().findViewById(android.R.id.content), "Salvar lançamento").performClick();
-            aguardar(controller.get()::isFinishing);
+            aguardar(() -> button(controller.get().findViewById(android.R.id.content),"Concluir")!=null);
+            button(controller.get().findViewById(android.R.id.content),"Concluir").performClick();
         }
         items = CompletableFuture.supplyAsync(() -> db.lancamentoDao().snapshot()).get();
         assertEquals(1, items.size()); assertEquals("Mercado editado", items.get(0).descricao);

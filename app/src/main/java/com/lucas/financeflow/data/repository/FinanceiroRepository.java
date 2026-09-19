@@ -35,7 +35,7 @@ public class FinanceiroRepository {
     }
 
     public void salvar(Lancamento item, Resultado resultado) {
-        executar(() -> { if (item.id == 0) lancamentoDao.inserir(item); else lancamentoDao.atualizar(item); }, resultado);
+        executar(() -> { if (item.id == 0) item.id=(int)lancamentoDao.inserir(item); else lancamentoDao.atualizar(item); }, resultado);
     }
 
     public void excluir(Lancamento item, Resultado resultado) {

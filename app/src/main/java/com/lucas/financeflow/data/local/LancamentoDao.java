@@ -36,7 +36,7 @@ public interface  LancamentoDao {
     void limparCadastros();
 
     @Insert
-    void inserir(Lancamento lancamento);
+    long inserir(Lancamento lancamento);
 
     @Query("SELECT * FROM lancamentos ORDER BY data DESC, id DESC")
     LiveData<List<Lancamento>> listarTodos();
