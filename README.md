@@ -14,6 +14,7 @@ Aplicativo Android de finanças pessoais, em português, sem login ou servidor. 
 - Orçamentos por categoria e mês, com barra de consumo, saldo disponível e destaque quando ultrapassados. O resumo indica recorrências vencidas e limites ultrapassados.
 - Exclusão de contas e origens/destinos em Contas → Cadastrar contas e origens, com confirmação. Excluir um cadastro remove a opção para novos lançamentos, preservando os registros e saldos antigos. Backups v2 preservam essa exclusão.
 - Saldo acumulado por conta considerando todo o histórico.
+- Toque em uma conta para abrir seu histórico de entradas/saídas, com busca, filtros de data/tipo e PDF restritos à conta. Novo lançamento já preenche a conta e começa como Saída (pode mudar para Entrada). Após salvar, “Outro nesta conta” permite cadastrar várias compras em sequência. O resultado desse histórico inclui apenas receitas/despesas; o saldo acumulado na aba Contas também considera transferências e investimentos.
 - Busca por nome, categoria, conta e origem, ignorando acentos e maiúsculas; filtro por tipo e por data ou intervalo inclusivo. Use `dd/MM/aa` ou `dd/MM/aaaa`; anos de dois dígitos representam 2000–2099. Preencha só a data inicial para pesquisar um dia. Datas inexistentes e intervalos invertidos são rejeitados.
 - PDF A4 da lista filtrada, com logo, filtros aplicados, totais de entradas/saídas/saldo, detalhes completos e paginação automática.
 - Backup completo em JSON e restauração validada, com confirmação antes de substituir o histórico. A operação é atômica: uma falha mantém os dados anteriores.

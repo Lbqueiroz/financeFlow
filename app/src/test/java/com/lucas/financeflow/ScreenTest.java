@@ -21,6 +21,51 @@ import org.robolectric.RuntimeEnvironment;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 28)
 public class ScreenTest {
+    @Test public void accountHistoryScopesExactlyAndPrefillsRepeatedExpenses() throws Exception {
+        testDb.lancamentoDao().cadastrar(new com.lucas.financeflow.data.model.Cadastro("CONTA","Fatura Nubank"));
+        testDb.lancamentoDao().cadastrar(new com.lucas.financeflow.data.model.Cadastro("CONTA","Fatura Nubank extra"));
+        for(String account:new String[]{"Fatura Nubank","fatura nubank","Fatura Nubank extra"})
+            testDb.lancamentoDao().inserir(new Lancamento("Compra",10,"SAIDA","Outros","2026-09-19","CELULAR","LOCAL","",account));
+        android.content.Intent historyIntent;
+        try(var accounts=Robolectric.buildActivity(ContasActivity.class).setup()) {
+            aguardar(() -> described(accounts.get().findViewById(android.R.id.content),"Abrir conta Fatura Nubank")!=null);
+            described(accounts.get().findViewById(android.R.id.content),"Abrir conta Fatura Nubank").performClick();
+            historyIntent=org.robolectric.Shadows.shadowOf(accounts.get()).getNextStartedActivity();
+            assertEquals("Fatura Nubank",historyIntent.getStringExtra(LancamentosActivity.EXTRA_CONTA));
+        }
+        try(var history=Robolectric.buildActivity(LancamentosActivity.class,historyIntent).setup()) {
+            var activity=history.get(); var list=(androidx.recyclerview.widget.RecyclerView)activity.findViewById(R.id.lista_itens);
+            aguardar(() -> list.getAdapter().getItemCount()==2);
+            activity.findViewById(R.id.filtro_data).performClick(); ultimoDialogo().getButton(-3).performClick(); assertEquals(2,list.getAdapter().getItemCount());
+            Bundle state=new Bundle(); history.saveInstanceState(state);
+            try(var restored=Robolectric.buildActivity(LancamentosActivity.class,historyIntent).setup(state)) {
+                var restoredList=(androidx.recyclerview.widget.RecyclerView)restored.get().findViewById(R.id.lista_itens);
+                aguardar(() -> restoredList.getAdapter().getItemCount()==2);
+            }
+            // Saving instance state lowers the LifecycleRegistry state; simulate returning to this screen.
+            history.pause().resume();
+            button(activity.findViewById(android.R.id.content),"+ Novo lançamento").performClick();
+            android.content.Intent formIntent=org.robolectric.Shadows.shadowOf(activity).getNextStartedActivity();
+            try(var form=Robolectric.buildActivity(AddLancamentoActivity.class,formIntent).setup()) {
+                var editor=form.get(); Spinner account=editor.findViewById(R.id.form_conta);
+                aguardar(() -> "Fatura Nubank".equals(account.getSelectedItem()));
+                assertEquals(1,((Spinner)editor.findViewById(R.id.form_tipo)).getSelectedItemPosition());
+                ((EditText)editor.findViewById(R.id.form_descricao)).setText("Compra nova");
+                ((EditText)editor.findViewById(R.id.form_valor)).setText("1250");
+                button(editor.findViewById(android.R.id.content),"Salvar lançamento").performClick();
+                aguardar(() -> button(editor.findViewById(android.R.id.content),"+ Outro nesta conta")!=null);
+                button(editor.findViewById(android.R.id.content),"+ Outro nesta conta").performClick();
+                assertEquals("Fatura Nubank",org.robolectric.Shadows.shadowOf(editor).getNextStartedActivity().getStringExtra(LancamentosActivity.EXTRA_CONTA));
+            }
+            aguardar(() -> list.getAdapter().getItemCount()==3);
+            assertEquals(4,testDb.lancamentoDao().snapshot().size());
+        }
+    }
+    private View described(View view,String description) {
+        if(description.contentEquals(view.getContentDescription()==null?"":view.getContentDescription())) return view;
+        if(view instanceof ViewGroup) for(int i=0;i<((ViewGroup)view).getChildCount();i++) {View found=described(((ViewGroup)view).getChildAt(i),description); if(found!=null) return found;}
+        return null;
+    }
     private AppDatabase testDb;
     @org.junit.Before public void isolatedDatabase() throws Exception {
         testDb = androidx.room.Room.inMemoryDatabaseBuilder(RuntimeEnvironment.getApplication(), AppDatabase.class)

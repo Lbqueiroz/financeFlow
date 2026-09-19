@@ -19,7 +19,9 @@ import java.util.*;
 import java.util.concurrent.Executors;
 
 public class LancamentosActivity extends BaseActivity {
-    @Override protected int tabAtual() { return R.id.nav_lancamentos; }
+    public static final String EXTRA_CONTA = "contaSelecionada";
+    private String contaSelecionada;
+    @Override protected int tabAtual() { return contaSelecionada == null ? R.id.nav_lancamentos : 0; }
     private List<Lancamento> todos = new ArrayList<>(), visiveis = new ArrayList<>();
     private LancamentoAdapter adapter;
     private FinanceiroRepository repository;
@@ -34,13 +36,17 @@ public class LancamentosActivity extends BaseActivity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        contaSelecionada = getIntent().getStringExtra(EXTRA_CONTA);
+        if (contaSelecionada != null && contaSelecionada.trim().isEmpty()) contaSelecionada = null;
         mes = getIntent().getStringExtra("mes");
         if (state != null) {
             mes = state.getString("mes");
             if (state.containsKey("inicio")) intervalo = new DateRange(state.getString("inicio"), state.getString("fim"));
         }
         repository = new FinanceiroRepository(this);
-        LinearLayout body = tela("Lançamentos", "Seu histórico de entradas e saídas.", false);
+        LinearLayout body = tela(contaSelecionada == null ? "Lançamentos" : contaSelecionada,
+                contaSelecionada == null ? "Seu histórico de entradas e saídas." : "Entradas e saídas desta conta. Novos lançamentos já vêm com ela preenchida.", false);
+        if (contaSelecionada != null) secundario(body,"‹ Voltar às contas",v -> finish());
         busca = campo(body, "Busca", "Nome, categoria, conta ou origem", R.id.lista_busca);
         tipo = seletor(body, new String[]{"Todos os tipos", "Entradas", "Saídas"}, R.id.lista_tipo);
         tipo.setContentDescription("Filtrar por tipo");
@@ -57,7 +63,7 @@ public class LancamentosActivity extends BaseActivity {
         body.addView(recycler, new LinearLayout.LayoutParams(-1, 0, 1));
         exportar = secundario(body, "Exportar relatório em PDF", v -> prepararExportacao());
         exportar.setEnabled(false);
-        botao(body, "+ Novo lançamento", v -> startActivity(new Intent(this, AddLancamentoActivity.class)));
+        botao(body, "+ Novo lançamento", v -> startActivity(new Intent(this, AddLancamentoActivity.class).putExtra(EXTRA_CONTA,contaSelecionada)));
         busca.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             public void onTextChanged(CharSequence s, int start, int before, int count) { filtrar(); }
@@ -73,6 +79,7 @@ public class LancamentosActivity extends BaseActivity {
         String query = FinanceUtils.normalizar(busca.getText().toString().trim());
         List<Lancamento> filtrados = new ArrayList<>(); long total = 0;
         for (Lancamento item : todos) {
+            if (contaSelecionada != null && !contaSelecionada.equalsIgnoreCase(item.conta)) continue;
             if (intervalo != null) { if (!intervalo.contem(item.data)) continue; }
             else if (mes != null && (item.data == null || !item.data.startsWith(mes))) continue;
             boolean entrada = "ENTRADA".equals(item.tipo);
@@ -81,7 +88,7 @@ public class LancamentosActivity extends BaseActivity {
             filtrados.add(item); total += FinanceUtils.centavos(item.valor) * (entrada ? 1 : -1);
         }
         visiveis = filtrados; adapter.setLancamentos(filtrados);
-        resumo.setText(filtrados.isEmpty() ? "Nenhum lançamento encontrado." : filtrados.size() + " lançamento(s) · Saldo " + FinanceUtils.moeda(total));
+        resumo.setText(filtrados.isEmpty() ? "Nenhum lançamento encontrado." : filtrados.size() + " lançamento(s) · " + (contaSelecionada == null ? "Saldo " : "Resultado dos lançamentos ") + FinanceUtils.moeda(total));
         if (exportar != null) exportar.setEnabled(!filtrados.isEmpty());
     }
     private void atualizarPeriodo() {
@@ -131,7 +138,7 @@ public class LancamentosActivity extends BaseActivity {
         state.items = new ArrayList<>(visiveis);
         state.period = intervalo != null ? "Período: " + FinanceUtils.dataVisivel(intervalo.inicio) + " a " + FinanceUtils.dataVisivel(intervalo.fim)
                 : mes != null ? "Período: " + mes.substring(5) + "/" + mes.substring(0, 4) : "Período: todo o histórico";
-        state.filters = "Tipo: " + tipo.getSelectedItem() + (busca.getText().toString().trim().isEmpty() ? "" : " | Busca: " + busca.getText().toString().trim());
+        state.filters = (contaSelecionada == null ? "" : "Conta: " + contaSelecionada + " | ") + "Tipo: " + tipo.getSelectedItem() + (busca.getText().toString().trim().isEmpty() ? "" : " | Busca: " + busca.getText().toString().trim());
         arquivo.launch("financeflow-" + FinanceUtils.hoje() + ".pdf");
     }
     private void exportar(Uri uri) {

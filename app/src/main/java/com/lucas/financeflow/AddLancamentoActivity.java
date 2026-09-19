@@ -16,12 +16,14 @@ public class AddLancamentoActivity extends BaseActivity {
     private boolean carregado;
     private FinanceiroRepository repository;
     private SaveViewModel saveModel;
+    private boolean contaInicialAplicada;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         repository = new FinanceiroRepository(this);
         saveModel = new androidx.lifecycle.ViewModelProvider(this).get(SaveViewModel.class);
         int id = getIntent().getIntExtra("id", 0);
+        String contaInicial = getIntent().getStringExtra(LancamentosActivity.EXTRA_CONTA);
         LinearLayout body = tela(id == 0 ? "Novo lançamento" : "Editar lançamento", "Organize os detalhes da sua movimentação.", true);
         descricao = campo(body, "Nome", "Ex.: supermercado", R.id.form_descricao);
         descricao.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
@@ -29,6 +31,7 @@ public class AddLancamentoActivity extends BaseActivity {
         MoneyInput.attach(valor);
         rotulo(body, "Tipo");
         tipo = seletor(body, new String[]{"Entrada", "Saída"}, R.id.form_tipo);
+        if (id == 0 && state == null && contaInicial != null) tipo.setSelection(1);
         categoria = opcoes(body, "Categoria", com.lucas.financeflow.wearlink.CategoryCatalog.all(), R.id.form_categoria);
         conta = opcoes(body, "Conta", new String[]{"Selecione uma conta"}, R.id.form_conta);
         secundario(body, "+ Cadastrar conta", v -> cadastrar("CONTA", nome -> selecionar(conta, nome)));
@@ -40,6 +43,9 @@ public class AddLancamentoActivity extends BaseActivity {
                 Spinner spinner = "CONTA".equals(item.tipo) ? conta : pessoa;
                 ArrayAdapter<String> adapter = (ArrayAdapter<String>) spinner.getAdapter();
                 if (posicao(adapter, item.nome) < 0) adapter.add(item.nome);
+                if (id == 0 && state == null && !contaInicialAplicada && "CONTA".equals(item.tipo) && item.nome.equalsIgnoreCase(contaInicial)) {
+                    selecionar(conta,item.nome); contaInicialAplicada=true;
+                }
             }
         });
         if (state != null) {
@@ -56,6 +62,11 @@ public class AddLancamentoActivity extends BaseActivity {
             if (status == 2) {
                 LinearLayout done=tela("Lançamento salvo", "Você pode desfazer se salvou por engano.", true);
                 botao(done,"Concluir",v -> finish());
+                if (id == 0 && contaInicial != null) botao(done,"+ Outro nesta conta",v -> {
+                    startActivity(new android.content.Intent(this,AddLancamentoActivity.class)
+                            .putExtra(LancamentosActivity.EXTRA_CONTA,conta.getSelectedItem().toString()));
+                    finish();
+                });
                 secundario(done,"Desfazer",v -> {v.setEnabled(false); saveModel.undo(ok -> {if(isDestroyed()) return; if(ok) {Toast.makeText(this,"Alteração desfeita",Toast.LENGTH_SHORT).show(); finish();} else Toast.makeText(this,"Não foi possível desfazer. Tente novamente.",Toast.LENGTH_LONG).show();});});
             }
             if (status == 5) finish();

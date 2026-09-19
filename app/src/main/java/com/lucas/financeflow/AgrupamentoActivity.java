@@ -60,6 +60,13 @@ public abstract class AgrupamentoActivity extends BaseActivity {
             TextView amount = texto(panel, FinanceUtils.moeda(grupo.getValue()), 26);
             amount.setTypeface(null, android.graphics.Typeface.BOLD);
             amount.setTextColor(android.graphics.Color.rgb(23,107,83));
+            if (porConta()) {
+                texto(panel,"Ver histórico e lançar nesta conta ›",14);
+                panel.setFocusable(true);
+                panel.setContentDescription("Abrir conta " + grupo.getKey());
+                panel.setOnClickListener(v -> startActivity(new android.content.Intent(this,LancamentosActivity.class)
+                        .putExtra(LancamentosActivity.EXTRA_CONTA,grupo.getKey())));
+            }
         }
     }
     @Override protected void onSaveInstanceState(Bundle out) { out.putLong("mes", mes.getTimeInMillis()); super.onSaveInstanceState(out); }
