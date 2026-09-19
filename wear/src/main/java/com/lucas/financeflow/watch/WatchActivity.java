@@ -13,6 +13,7 @@ public class WatchActivity extends androidx.activity.ComponentActivity implement
     private LinearLayout content;
     private String screen="home",type="SAIDA",account="",category="Outros",digits="";
     private final android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable releasePending=() -> { WatchSync.flush(getApplicationContext()); if(screen.equals("saved")) home(); };
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         getOnBackPressedDispatcher().addCallback(this,new androidx.activity.OnBackPressedCallback(true) {
@@ -22,7 +23,8 @@ public class WatchActivity extends androidx.activity.ComponentActivity implement
         if(screen.equals("form") || screen.equals("review")) form(); else home();
     }
     @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); out.putString("screen",screen); out.putString("type",type); out.putString("account",account); out.putString("category",category); out.putString("digits",digits); }
-    @Override protected void onResume() { super.onResume(); getSharedPreferences("watch",MODE_PRIVATE).registerOnSharedPreferenceChangeListener(this); WatchSync.refresh(this); }
+    @Override protected void onResume() { super.onResume(); getSharedPreferences("watch",MODE_PRIVATE).registerOnSharedPreferenceChangeListener(this); WatchSync.refresh(this); schedulePending(); }
+    @Override protected void onDestroy() {handler.removeCallbacksAndMessages(null); super.onDestroy();}
     @Override protected void onPause() { getSharedPreferences("watch",MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(this); super.onPause(); }
     @Override public void onSharedPreferenceChanged(android.content.SharedPreferences prefs,String key) { handler.post(() -> { if(screen.equals("home")) home(); else if(screen.equals("pending")) pending(); }); }
     private int dp(int value) { return Math.round(value*getResources().getDisplayMetrics().density); }
@@ -47,6 +49,9 @@ public class WatchActivity extends androidx.activity.ComponentActivity implement
         long updated=summary.optLong("updatedAt");
         label(updated==0 ? "Abra o FinanceFlow no celular pareado para sincronizar." : "Atualizado "+new java.text.SimpleDateFormat("dd/MM HH:mm",WearProtocol.BR).format(new java.util.Date(updated)),11,Color.LTGRAY);
         button("− Saída",() -> start("SAIDA")); button("+ Entrada",() -> start("ENTRADA"));
+        JSONArray favorites=store().favorites();
+        for(int i=0;i<favorites.length();i++) {JSONObject favorite=favorites.optJSONObject(i); if(favorite!=null) button("★ "+favorite.optString("name"),() -> openFavorite(favorite));}
+        button("Gerenciar favoritos",this::favorites);
         button("Pendentes ("+store().pending().length()+")",this::pending);
         button("Atualizar",() -> { WatchSync.refresh(this); Toast.makeText(this,"Atualização solicitada",Toast.LENGTH_SHORT).show(); });
     }
@@ -73,25 +78,53 @@ public class WatchActivity extends androidx.activity.ComponentActivity implement
             }
         });
         button(account,() -> { page("Conta"); JSONArray list=store().summary().optJSONArray("accounts"); if(list!=null) for(int i=0;i<list.length();i++) { String name=list.optString(i); button(name,() -> {account=name; form();}); } button("Voltar",this::form); });
-        button(category,() -> { page("Categoria"); String[] categories=type.equals("SAIDA")?new String[]{"Alimentação","Transporte","Moradia","Saúde","Lazer","Outros"}:new String[]{"Salário","Freelance","Investimentos","Outros"}; for(String name:categories) button(name,() -> {category=name; form();}); button("Voltar",this::form); });
-        button("Revisar",this::review); button("Cancelar",this::home);
+        button(category,() -> { page("Categoria"); String[] categories=com.lucas.financeflow.wearlink.CategoryCatalog.all(); for(String name:categories) button(name,() -> {category=name; form();}); button("Voltar",this::form); });
+        button("Revisar",this::review); button("★ Salvar favorito",this::saveFavorite); button("Cancelar",this::home);
     }
     private void review() {
         if(digits.isEmpty() || Long.parseLong(digits)==0) { Toast.makeText(this,"Informe o valor",Toast.LENGTH_SHORT).show(); return; }
         screen="review"; page("Confirmar "+(type.equals("SAIDA")?"saída":"entrada")); label(WearProtocol.money(Long.parseLong(digits)),24,Color.WHITE); label(account+"\n"+category,14,Color.LTGRAY);
         button("Salvar",() -> {
             try {
-                synchronized(WatchSync.LOCK) { store().add(new WearProtocol.Entry(java.util.UUID.randomUUID().toString(),type,account,category,WearProtocol.today(),Long.parseLong(digits))); }
+                String id=java.util.UUID.randomUUID().toString();
+                synchronized(WatchSync.LOCK) { store().add(new WearProtocol.Entry(id,type,account,category,WearProtocol.today(),Long.parseLong(digits)),System.currentTimeMillis()+8000); }
                 getSharedPreferences("watch",MODE_PRIVATE).edit().putString("lastAccount",account).apply();
-                digits=""; home(); WatchSync.flush(this); Toast.makeText(this,"Salvo. Aguardando o celular.",Toast.LENGTH_LONG).show();
+                digits=""; screen="saved"; page("Lançamento salvo"); label("Você tem 8 segundos para desfazer antes do envio.",14,Color.WHITE);
+                button("Desfazer",() -> undo(id)); button("Concluir",this::home); schedulePending();
             } catch(Exception e) { Toast.makeText(this,e.getMessage(),Toast.LENGTH_LONG).show(); }
         }); button("Voltar",this::form);
     }
     private void pending() {
         screen="pending"; page("Pendentes"); JSONArray list=store().pending();
         if(list.length()==0) label("Tudo sincronizado",16,Color.WHITE);
-        for(int i=0;i<list.length();i++) { JSONObject item=list.optJSONObject(i); if(item!=null) { label(("SAIDA".equals(item.optString("type"))?"− ":"+ ")+WearProtocol.money(item.optLong("cents"))+"\n"+item.optString("account"),16,Color.WHITE); label(item.optString("error","Aguardando confirmação do celular"),12,Color.LTGRAY); } }
+        for(int i=0;i<list.length();i++) { JSONObject item=list.optJSONObject(i); if(item!=null) { label(("SAIDA".equals(item.optString("type"))?"− ":"+ ")+WearProtocol.money(item.optLong("cents"))+"\n"+item.optString("account"),16,Color.WHITE); label(item.optString("error","Aguardando confirmação do celular"),12,Color.LTGRAY); if(System.currentTimeMillis()<item.optLong("notBefore")) button("Desfazer",() -> undo(item.optString("id"))); } }
         if(list.length()>0) { label("O saldo só muda após a confirmação. Não repita o lançamento no celular.",12,Color.LTGRAY); button("Tentar novamente",() -> { WatchSync.refresh(this); Toast.makeText(this,"Sincronização solicitada",Toast.LENGTH_SHORT).show(); }); }
+        button("Voltar",this::home);
+    }
+    private void undo(String id) {
+        try {boolean removed; synchronized(WatchSync.LOCK) {removed=store().undo(id,System.currentTimeMillis());} Toast.makeText(this,removed?"Lançamento desfeito":"Já encaminhado. Edite no celular.",Toast.LENGTH_LONG).show(); home();}
+        catch(Exception e) {Toast.makeText(this,"Não foi possível desfazer",Toast.LENGTH_LONG).show();}
+    }
+    private void schedulePending() {
+        handler.removeCallbacks(releasePending); long now=System.currentTimeMillis(),last=now;
+        JSONArray items=store().pending(); for(int i=0;i<items.length();i++) last=Math.max(last,items.optJSONObject(i).optLong("notBefore"));
+        if(last>now) handler.postDelayed(releasePending,last-now+100);
+    }
+    private void openFavorite(JSONObject favorite) {
+        JSONArray accounts=store().summary().optJSONArray("accounts"); boolean exists=false;
+        if(accounts!=null) for(int i=0;i<accounts.length();i++) if(accounts.optString(i).equals(favorite.optString("account"))) exists=true;
+        if(!exists) {Toast.makeText(this,"Conta indisponível. Atualize ou recrie o favorito.",Toast.LENGTH_LONG).show(); return;}
+        account=favorite.optString("account"); category=favorite.optString("category"); type=favorite.optString("type"); digits=""; form();
+    }
+    private void saveFavorite() {
+        screen="favorite"; page("Novo favorito"); label(account+" · "+category,13,Color.LTGRAY);
+        EditText name=new EditText(this); name.setSingleLine(true); name.setHint("Ex.: Café"); name.setTextColor(Color.WHITE); name.setContentDescription("Nome do favorito"); name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(30)}); content.addView(name,new LinearLayout.LayoutParams(-1,dp(54)));
+        button("Salvar favorito",() -> {try {store().favorite(name.getText().toString(),type,account,category); Toast.makeText(this,"Favorito salvo",Toast.LENGTH_SHORT).show(); form();} catch(Exception e) {Toast.makeText(this,e.getMessage(),Toast.LENGTH_LONG).show();}}); button("Voltar",this::form);
+    }
+    private void favorites() {
+        screen="favorites"; page("Favoritos"); JSONArray items=store().favorites();
+        if(items.length()==0) label("Escolha conta e categoria em um novo lançamento e toque em Salvar favorito.",14,Color.WHITE);
+        for(int i=0;i<items.length();i++) {JSONObject item=items.optJSONObject(i); if(item==null) continue; label(item.optString("name"),17,Color.WHITE); label(item.optString("account")+" · "+item.optString("category"),12,Color.LTGRAY); button("Remover",() -> new android.app.AlertDialog.Builder(this).setTitle("Remover favorito?").setNegativeButton("Cancelar",null).setPositiveButton("Remover",(d,w) -> {try {store().removeFavorite(item.optString("id")); favorites();} catch(Exception e) {Toast.makeText(this,"Não foi possível remover",Toast.LENGTH_SHORT).show();}}).show());}
         button("Voltar",this::home);
     }
 }

@@ -2,6 +2,15 @@
 
 O módulo `wear` é o aplicativo complementar Wear OS. Mostra o saldo do mês (entradas menos saídas) e permite registrar entrada ou saída com valor, conta e categoria. O celular mantém o histórico completo. O relógio precisa estar pareado com um celular Android com Google Play Services e com a nova versão do FinanceFlow instalada.
 
+Celular e relógio usam o mesmo catálogo de 11 categorias. Atualize os dois APKs. O saldo mensal continua sendo entradas menos gastos; aplicações e transferências ficam separadas no celular.
+
+## Favoritos e desfazer
+
+- Em um novo lançamento, escolha conta e categoria e toque em **Salvar favorito**. Dê um nome, como Café ou Transporte. Até 8 atalhos ficam na tela inicial, com tipo/conta/categoria preenchidos; o valor é informado a cada uso.
+- **Gerenciar favoritos** permite removê-los. Uma conta excluída no celular precisa ser cadastrada novamente ou substituída criando outro favorito. Os favoritos ficam no relógio e não fazem parte do backup do celular.
+- Depois de **Salvar**, há **8 segundos para Desfazer**. Durante essa janela o lançamento está salvo localmente, mas ainda não pode ser enviado. Após o prazo, edite/exclua no celular. A ação também aparece em Pendentes enquanto a janela está aberta.
+- Se o processo do relógio for encerrado antes do envio, a fila permanece salva; abrir o app retoma o envio depois do prazo.
+
 ## Instalação pessoal pelo Windows
 
 1. Atualize o celular com `app/build/outputs/apk/debug/app-debug.apk`.
@@ -25,7 +34,7 @@ Os dois APKs devem ter o mesmo applicationId e certificado de assinatura. Os bui
 ## Uso e verificação no aparelho
 
 - Confira o saldo e a hora da última atualização. Um saldo de outro mês é identificado como antigo.
-- Toque em Saída ou Entrada, digite os centavos (12345 vira 123,45), escolha conta/categoria, revise e salve. A data é o dia local do relógio; o nome é “Gasto pelo relógio” ou “Entrada pelo relógio”. Edite detalhes depois no celular.
+- Toque em Saída ou Entrada, digite os centavos (12345 vira 123,45), escolha conta/categoria, revise e salve. A data é o dia local do relógio; edite o nome e outros detalhes depois no celular.
 - O lançamento fica salvo no relógio até o celular confirmar. O saldo exibido só muda após a confirmação. Não faça uma segunda cópia manual no celular.
 - Sem conexão, o último saldo continua visível e até 50 lançamentos ficam na fila. Abra o app para retomar o envio quando a conexão voltar. Pendentes mostra erros e permite tentar novamente. Se a conta foi excluída, cadastre-a novamente no celular antes de tentar.
 - Teste uma saída pequena, confira no celular e exclua-a após a conferência. Depois repita sem conexão e reconecte: deve existir uma única movimentação.

@@ -23,6 +23,7 @@ public final class WatchSync {
                 JSONArray list=new WatchStore(context).pending();
                 for(int i=0;i<list.length();i++) {
                     JSONObject item=list.getJSONObject(i);
+                    if(System.currentTimeMillis()<item.optLong("notBefore")) continue;
                     PutDataMapRequest request=PutDataMapRequest.create(WearProtocol.TX+item.getString("id"));
                     request.getDataMap().putString("json",item.toString());
                     request.getDataMap().putLong("retry",System.currentTimeMillis());
