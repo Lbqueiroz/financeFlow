@@ -38,8 +38,8 @@ public class BackupActivity extends BaseActivity {
             String mensagem;
             try {
                 AppDatabase db = AppDatabase.getInstance(this);
-                BackupCodec.Documento snapshot = db.runInTransaction(() -> new BackupCodec.Documento(db.lancamentoDao().snapshot(), db.lancamentoDao().snapshotCadastros(),db.planDao().snapshot()));
-                String content = BackupCodec.encode(snapshot.itens, snapshot.cadastros,snapshot.plans);
+                BackupCodec.Documento snapshot = db.runInTransaction(() -> new BackupCodec.Documento(db.lancamentoDao().snapshot(), db.lancamentoDao().snapshotCadastros(),db.planDao().snapshot(),db.installmentDao().snapshot()));
+                String content = BackupCodec.encode(snapshot.itens, snapshot.cadastros,snapshot.plans,snapshot.installments);
                 try (OutputStream stream = getContentResolver().openOutputStream(uri, "wt")) {
                     if (stream == null) throw new IOException();
                     stream.write(content.getBytes(StandardCharsets.UTF_8));
@@ -68,13 +68,13 @@ public class BackupActivity extends BaseActivity {
     private void confirmar(BackupCodec.Documento itens) {
         if (isDestroyed() || isFinishing()) return;
         new AlertDialog.Builder(this).setTitle("Substituir o histórico?")
-                .setMessage("O backup contém " + itens.itens.size() + " lançamento(s) e "+itens.plans.size()+" registro(s) de planejamento. Histórico, cadastros, investimentos, transferências, recorrências e orçamentos serão substituídos. Backups antigos não contêm planejamento. Salve um backup antes de continuar.")
+                .setMessage("O backup contém " + itens.itens.size() + " lançamento(s), "+itens.plans.size()+" registro(s) de planejamento e "+itens.installments.size()+" compra(s) parcelada(s). Todos os dados financeiros atuais serão substituídos. Dados ausentes em backups antigos serão removidos. Salve um backup antes de continuar.")
                 .setNegativeButton("Cancelar", (d, w) -> ocupado(false))
                 .setOnCancelListener(d -> ocupado(false))
                 .setPositiveButton("Restaurar", (d, w) -> IO.execute(() -> {
                     try {
                         AppDatabase db=AppDatabase.getInstance(this);
-                        db.runInTransaction(() -> {db.lancamentoDao().restaurarCompleto(itens.itens, itens.cadastros); db.planDao().clear(); db.planDao().insertAll(itens.plans);});
+                        db.runInTransaction(() -> {db.lancamentoDao().restaurarCompleto(itens.itens, itens.cadastros); db.planDao().clear(); db.planDao().insertAll(itens.plans); db.installmentDao().clear(); db.installmentDao().insertAll(itens.installments);});
                         runOnUiThread(() -> resposta("Backup restaurado"));
                     } catch (RuntimeException ex) { runOnUiThread(() -> resposta("Falha na restauração. Seu histórico foi preservado.")); }
                 })).show();

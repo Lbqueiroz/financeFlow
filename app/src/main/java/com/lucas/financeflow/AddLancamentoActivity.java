@@ -140,7 +140,11 @@ public class AddLancamentoActivity extends BaseActivity {
                 tipo.getSelectedItemPosition() == 0 ? "ENTRADA" : "SAIDA",
                 categoria.getSelectedItem().toString(), dataIso, "CELULAR", "LOCAL",
                 pessoa.getSelectedItemPosition() == 0 ? "" : pessoa.getSelectedItem().toString(), conta.getSelectedItem().toString());
-        if (original != null) item.id = original.id;
+        if (original != null) {
+            item.id = original.id;
+            item.installmentPlanId=original.installmentPlanId;
+            item.installmentNumber=original.installmentNumber;
+        }
         saveModel.salvar(item);
     }
 

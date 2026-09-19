@@ -1,4 +1,6 @@
 <resources>
+    <item name="installment_count" type="id" />
+    <item name="filtro_conta" type="id" />
     <item name="filtro_inicio" type="id" />
     <item name="filtro_fim" type="id" />
     <item name="filtro_data" type="id" />

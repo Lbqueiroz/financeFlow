@@ -21,6 +21,8 @@
         </service>
         <activity android:name=".AddLancamentoActivity" />
         <activity android:name=".MoreActivity" />
+        <activity android:name=".InstallmentsActivity" />
+        <activity android:name=".NewInstallmentActivity" />
         <activity android:name=".PlanningActivity" />
         <activity android:name=".LancamentosActivity" />
         <activity android:name=".BackupActivity" />

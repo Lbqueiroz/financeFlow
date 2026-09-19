@@ -18,6 +18,8 @@ public class Lancamento {
     public String data;
     public String origem; // CELULAR ou RELOGIO
     public String syncStatus; // PENDENTE ou SINCRONIZADO
+    public String installmentPlanId;
+    @androidx.room.ColumnInfo(defaultValue="0") public int installmentNumber;
 
     public Lancamento(String descricao, double valor, String tipo, String categoria, String data, String origem, String syncStatus, String origemDestino, String conta) {
         this.descricao = descricao;

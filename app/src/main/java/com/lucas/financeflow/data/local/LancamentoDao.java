@@ -46,6 +46,8 @@ public interface  LancamentoDao {
 
     @Query("SELECT * FROM lancamentos ORDER BY data DESC, id DESC")
     List<Lancamento> snapshot();
+    @Query("DELETE FROM lancamentos WHERE installmentPlanId=:planId")
+    void deleteInstallments(String planId);
 
     @Query("DELETE FROM lancamentos")
     void limpar();
