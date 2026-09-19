@@ -10,9 +10,18 @@ import com.google.android.material.button.MaterialButton;
 
 /** Shared spacing, accessible touch targets and system-bar insets for all screens. */
 public abstract class BaseActivity extends AppCompatActivity {
+    private TextView headingView,subtitleView;
+    private View navigationView;
+    protected void onKeyboardVisibilityChanged(boolean visible) { }
+    protected void showHeading(boolean visible) {
+        if(headingView!=null) headingView.setVisibility(visible?View.VISIBLE:View.GONE);
+        if(subtitleView!=null) subtitleView.setVisibility(visible?View.VISIBLE:View.GONE);
+    }
     @Override protected void onCreate(Bundle state) {
         getDelegate().setLocalNightMode(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO);
         super.onCreate(state);
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(getWindow(),false);
+        getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
     }
     protected int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }
     protected int tabAtual() { return R.id.nav_inicio; }
@@ -47,7 +56,10 @@ public abstract class BaseActivity extends AppCompatActivity {
         ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
             v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
-            return insets;
+            boolean keyboard=insets.isVisible(WindowInsetsCompat.Type.ime());
+            if(navigationView!=null) navigationView.setVisibility(keyboard?View.GONE:View.VISIBLE);
+            onKeyboardVisibilityChanged(keyboard);
+            return WindowInsetsCompat.CONSUMED;
         });
         LinearLayout content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(20), dp(16), dp(20), dp(12));
@@ -60,10 +72,13 @@ public abstract class BaseActivity extends AppCompatActivity {
             scroll.addView(body);
         }
         TextView heading = texto(body, titulo, 30); heading.setTypeface(null, android.graphics.Typeface.BOLD);
+        headingView=heading;
         ViewCompat.setAccessibilityHeading(heading, true);
-        texto(body, subtitulo, 15).setPadding(0, dp(4), 0, dp(20));
+        subtitleView=texto(body, subtitulo, 15); subtitleView.setPadding(0, dp(4), 0, dp(20));
+        navigationView=null;
         if (tabAtual() != 0) {
             com.google.android.material.bottomnavigation.BottomNavigationView nav = new com.google.android.material.bottomnavigation.BottomNavigationView(this);
+            navigationView=nav;
             nav.setBackgroundColor(android.graphics.Color.WHITE);
             nav.setItemActiveIndicatorColor(android.content.res.ColorStateList.valueOf(android.graphics.Color.rgb(219,239,227)));
             android.content.res.ColorStateList navColors = new android.content.res.ColorStateList(
@@ -113,6 +128,8 @@ public abstract class BaseActivity extends AppCompatActivity {
         field.setBackgroundResource(R.drawable.card_background);
         field.setPadding(dp(16), dp(12), dp(16), dp(12));
         field.setTextSize(16);
+        field.setTextColor(androidx.core.content.ContextCompat.getColor(this,R.color.text_primary));
+        field.setHintTextColor(androidx.core.content.ContextCompat.getColor(this,R.color.text_secondary));
         body.addView(field, new LinearLayout.LayoutParams(-1, -2)); return field;
     }
     protected Spinner opcoes(LinearLayout body, String label, String[] options, int id) {

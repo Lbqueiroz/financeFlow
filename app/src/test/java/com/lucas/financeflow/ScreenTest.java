@@ -21,6 +21,34 @@ import org.robolectric.RuntimeEnvironment;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 28)
 public class ScreenTest {
+    @Test public void accountSelectorCombinesWithSearchTypeDateAndPdfAndSurvivesRotation() throws Exception {
+        testDb.lancamentoDao().cadastrar(new com.lucas.financeflow.data.model.Cadastro("CONTA","Inter"));
+        for(String[] row:new String[][]{{"Inter","SAIDA","2026-09-18"},{"Inter","ENTRADA","2026-09-18"},{"Inter","SAIDA","2026-08-18"},{"Inter extra","SAIDA","2026-09-18"}})
+            testDb.lancamentoDao().inserir(new Lancamento("Almoço",10,row[1],"Alimentação",row[2],"CELULAR","LOCAL","",row[0]));
+        Bundle saved=new Bundle();
+        try(var controller=Robolectric.buildActivity(LancamentosActivity.class).setup()) {
+            var activity=controller.get(); var list=(androidx.recyclerview.widget.RecyclerView)activity.findViewById(R.id.lista_itens);
+            Spinner account=activity.findViewById(R.id.filtro_conta); aguardar(() -> account.getCount()==3);
+            assertEquals("Inter extra",account.getItemAtPosition(2)); // historical account without registration
+            account.setSelection(1); aguardar(() -> list.getAdapter().getItemCount()==3);
+            ((Spinner)activity.findViewById(R.id.lista_tipo)).setSelection(2); aguardar(() -> list.getAdapter().getItemCount()==2);
+            ((EditText)activity.findViewById(R.id.lista_busca)).setText("almoco"); assertEquals(2,list.getAdapter().getItemCount());
+            activity.findViewById(R.id.filtro_data).performClick(); var dialog=ultimoDialogo();
+            escolherDia(dialog,R.id.filtro_inicio,2026,9,18); dialog.getButton(-1).performClick(); assertEquals(1,list.getAdapter().getItemCount());
+            button(activity.findViewById(android.R.id.content),"Exportar relatório em PDF").performClick();
+            var pdf=new androidx.lifecycle.ViewModelProvider(activity).get(LancamentosActivity.PdfExportState.class);
+            assertEquals(1,pdf.items.size()); assertTrue(pdf.filters.contains("Conta: Inter |")); assertEquals("Inter",pdf.items.get(0).conta);
+            controller.saveInstanceState(saved);
+        }
+        try(var restored=Robolectric.buildActivity(LancamentosActivity.class).setup(saved)) {
+            var activity=restored.get(); var list=(androidx.recyclerview.widget.RecyclerView)activity.findViewById(R.id.lista_itens);
+            aguardar(() -> list.getAdapter().getItemCount()==1); assertEquals("Inter",((Spinner)activity.findViewById(R.id.filtro_conta)).getSelectedItem());
+            activity.findViewById(R.id.filtro_data).performClick(); ultimoDialogo().getButton(-3).performClick();
+            ShadowLooper.idleMainLooper();
+            assertEquals(2,list.getAdapter().getItemCount());
+            ((Spinner)activity.findViewById(R.id.filtro_conta)).setSelection(0); aguardar(() -> list.getAdapter().getItemCount()==3);
+        }
+    }
     @Test public void accountHistoryScopesExactlyAndPrefillsRepeatedExpenses() throws Exception {
         testDb.lancamentoDao().cadastrar(new com.lucas.financeflow.data.model.Cadastro("CONTA","Fatura Nubank"));
         testDb.lancamentoDao().cadastrar(new com.lucas.financeflow.data.model.Cadastro("CONTA","Fatura Nubank extra"));
@@ -102,7 +130,7 @@ public class ScreenTest {
         }
     }
 
-    @Test public void dateDialogFiltersInclusivelyAndRejectsImpossibleDate() throws Exception {
+    @Test public void calendarFiltersInclusivelyAndRejectsReversedRange() throws Exception {
         for (String day : new String[]{"2026-07-31", "2026-08-01", "2026-09-18", "2026-09-30", "2026-10-01"}) {
             testDb.lancamentoDao().inserir(new Lancamento("Teste", 1, "ENTRADA", "Outros", day, "CELULAR", "LOCAL", "", "Conta"));
         }
@@ -112,16 +140,16 @@ public class ScreenTest {
             aguardar(() -> recycler.getAdapter().getItemCount() == 5);
             activity.findViewById(R.id.filtro_data).performClick();
             androidx.appcompat.app.AlertDialog dialog = ultimoDialogo();
-            ((EditText) dialog.findViewById(R.id.filtro_inicio)).setText("01/08/26");
-            ((EditText) dialog.findViewById(R.id.filtro_fim)).setText("31/09/26");
+            assertTrue(dialog.findViewById(R.id.filtro_inicio) instanceof Button);
+            escolherDia(dialog,R.id.filtro_inicio,2026,8,1);
+            escolherDia(dialog,R.id.filtro_fim,2026,7,31);
             dialog.getButton(-1).performClick(); assertTrue(dialog.isShowing());
-            assertNotNull(((EditText) dialog.findViewById(R.id.filtro_fim)).getError());
-            ((EditText) dialog.findViewById(R.id.filtro_fim)).setText("30/09/26"); dialog.getButton(-1).performClick();
+            escolherDia(dialog,R.id.filtro_fim,2026,9,30); dialog.getButton(-1).performClick();
             assertEquals(3, recycler.getAdapter().getItemCount());
             activity.findViewById(R.id.filtro_data).performClick();
             dialog = ultimoDialogo();
-            ((EditText) dialog.findViewById(R.id.filtro_inicio)).setText("18/09/26");
-            ((EditText) dialog.findViewById(R.id.filtro_fim)).setText(""); dialog.getButton(-1).performClick();
+            escolherDia(dialog,R.id.filtro_inicio,2026,9,18);
+            button(dialog.findViewById(android.R.id.content),"Usar só a data inicial").performClick(); dialog.getButton(-1).performClick();
             assertEquals(1, recycler.getAdapter().getItemCount());
             Bundle state = new Bundle(); controller.saveInstanceState(state);
             try (var restored = Robolectric.buildActivity(LancamentosActivity.class).setup(state)) {
@@ -137,6 +165,11 @@ public class ScreenTest {
     private androidx.appcompat.app.AlertDialog ultimoDialogo() {
         ShadowLooper.idleMainLooper();
         return (androidx.appcompat.app.AlertDialog) org.robolectric.shadows.ShadowDialog.getLatestDialog();
+    }
+    private void escolherDia(androidx.appcompat.app.AlertDialog dialog,int field,int year,int month,int day) {
+        dialog.findViewById(field).performClick(); ShadowLooper.idleMainLooper();
+        android.app.DatePickerDialog picker=(android.app.DatePickerDialog)org.robolectric.shadows.ShadowDialog.getLatestDialog();
+        picker.updateDate(year,month-1,day); picker.getButton(-1).performClick(); ShadowLooper.idleMainLooper();
     }
     private EditText edit(View view) {
         if (view instanceof EditText) return (EditText) view;

@@ -27,10 +27,14 @@ public class LancamentosActivity extends BaseActivity {
     private FinanceiroRepository repository;
     private EditText busca;
     private Spinner tipo;
+    private Spinner filtroConta;
+    private String contaFiltro;
+    private List<com.lucas.financeflow.data.model.Cadastro> cadastros=new ArrayList<>();
     private TextView resumo;
     private String mes;
     private Button exportar;
     private Button filtroData;
+    private Button novo,voltar;
     private DateRange intervalo;
     private final ActivityResultLauncher<String> arquivo = registerForActivityResult(new ActivityResultContracts.CreateDocument("application/pdf"), this::exportar);
 
@@ -41,15 +45,26 @@ public class LancamentosActivity extends BaseActivity {
         mes = getIntent().getStringExtra("mes");
         if (state != null) {
             mes = state.getString("mes");
+            contaFiltro=state.getString("contaFiltro");
             if (state.containsKey("inicio")) intervalo = new DateRange(state.getString("inicio"), state.getString("fim"));
         }
         repository = new FinanceiroRepository(this);
         LinearLayout body = tela(contaSelecionada == null ? "Lançamentos" : contaSelecionada,
                 contaSelecionada == null ? "Seu histórico de entradas e saídas." : "Entradas e saídas desta conta. Novos lançamentos já vêm com ela preenchida.", false);
-        if (contaSelecionada != null) secundario(body,"‹ Voltar às contas",v -> finish());
+        if (contaSelecionada != null) voltar=secundario(body,"‹ Voltar às contas",v -> finish());
         busca = campo(body, "Busca", "Nome, categoria, conta ou origem", R.id.lista_busca);
+        busca.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH | android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI | android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN);
+        busca.setOnEditorActionListener((view,action,event) -> {
+            if(action!=android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) return false;
+            androidx.core.view.WindowCompat.getInsetsController(getWindow(),view).hide(androidx.core.view.WindowInsetsCompat.Type.ime());
+            busca.clearFocus(); return true;
+        });
         tipo = seletor(body, new String[]{"Todos os tipos", "Entradas", "Saídas"}, R.id.lista_tipo);
         tipo.setContentDescription("Filtrar por tipo");
+        if(contaSelecionada==null) {
+            filtroConta=seletor(body,new String[]{"Todas as contas"},R.id.filtro_conta);
+            filtroConta.setContentDescription("Filtrar por conta"); filtroConta.setSaveEnabled(false);
+        }
         filtroData = secundario(body, "", v -> escolherPeriodo()); filtroData.setId(R.id.filtro_data);
         atualizarPeriodo();
         resumo = texto(body, "Carregando…", 16);
@@ -63,7 +78,7 @@ public class LancamentosActivity extends BaseActivity {
         body.addView(recycler, new LinearLayout.LayoutParams(-1, 0, 1));
         exportar = secundario(body, "Exportar relatório em PDF", v -> prepararExportacao());
         exportar.setEnabled(false);
-        botao(body, "+ Novo lançamento", v -> startActivity(new Intent(this, AddLancamentoActivity.class).putExtra(EXTRA_CONTA,contaSelecionada)));
+        novo=botao(body, "+ Novo lançamento", v -> startActivity(new Intent(this, AddLancamentoActivity.class).putExtra(EXTRA_CONTA,contaEfetiva())));
         busca.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             public void onTextChanged(CharSequence s, int start, int before, int count) { filtrar(); }
@@ -73,13 +88,40 @@ public class LancamentosActivity extends BaseActivity {
             public void onItemSelected(AdapterView<?> p, View v, int position, long id) { filtrar(); }
             public void onNothingSelected(AdapterView<?> p) { }
         });
-        repository.listarTodos().observe(this, items -> { todos = items; filtrar(); });
+        if(filtroConta!=null) {
+            atualizarContas();
+            filtroConta.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                public void onItemSelected(AdapterView<?> parent,View view,int position,long id) {
+                    contaFiltro=position==0?null:parent.getItemAtPosition(position).toString(); filtrar();
+                }
+                public void onNothingSelected(AdapterView<?> parent) { }
+            });
+            repository.cadastros().observe(this,items -> {cadastros=items; atualizarContas();});
+        }
+        repository.listarTodos().observe(this, items -> { todos = items; atualizarContas(); filtrar(); });
+    }
+    private String contaEfetiva() {return contaSelecionada!=null?contaSelecionada:contaFiltro;}
+    @Override protected void onKeyboardVisibilityChanged(boolean visible) {
+        showHeading(!visible);
+        for(View view:new View[]{tipo,filtroConta,filtroData,exportar,novo,voltar}) if(view!=null) view.setVisibility(visible?View.GONE:View.VISIBLE);
+    }
+    private void atualizarContas() {
+        if(filtroConta==null) return;
+        Set<String> names=new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        for(com.lucas.financeflow.data.model.Cadastro item:cadastros) if("CONTA".equals(item.tipo)) names.add(item.nome);
+        for(Lancamento item:todos) if(item.conta!=null && !item.conta.isEmpty()) names.add(item.conta);
+        if(contaFiltro!=null) names.add(contaFiltro);
+        List<String> values=new ArrayList<>(); values.add("Todas as contas"); values.addAll(names);
+        ArrayAdapter<String> options=new ArrayAdapter<>(this,R.layout.select_value,values); options.setDropDownViewResource(R.layout.select_option);
+        filtroConta.setAdapter(options); int selected=0;
+        if(contaFiltro!=null) for(int i=1;i<values.size();i++) if(contaFiltro.equalsIgnoreCase(values.get(i))) selected=i;
+        filtroConta.setSelection(selected);
     }
     private void filtrar() {
         String query = FinanceUtils.normalizar(busca.getText().toString().trim());
         List<Lancamento> filtrados = new ArrayList<>(); long total = 0;
         for (Lancamento item : todos) {
-            if (contaSelecionada != null && !contaSelecionada.equalsIgnoreCase(item.conta)) continue;
+            if (contaEfetiva() != null && !contaEfetiva().equalsIgnoreCase(item.conta)) continue;
             if (intervalo != null) { if (!intervalo.contem(item.data)) continue; }
             else if (mes != null && (item.data == null || !item.data.startsWith(mes))) continue;
             boolean entrada = "ENTRADA".equals(item.tipo);
@@ -97,27 +139,36 @@ public class LancamentosActivity extends BaseActivity {
     }
     private void escolherPeriodo() {
         LinearLayout panel = new LinearLayout(this); panel.setOrientation(LinearLayout.VERTICAL); panel.setPadding(dp(24), 0, dp(24), 0);
-        texto(panel, "Para um único dia, preencha só a data inicial. Para um período, preencha as duas datas.", 15);
-        EditText de = campo(panel, "Data inicial", "18/09/26", R.id.filtro_inicio);
-        EditText ate = campo(panel, "Data final (opcional)", "30/09/26", R.id.filtro_fim);
-        de.setInputType(android.text.InputType.TYPE_CLASS_DATETIME | android.text.InputType.TYPE_DATETIME_VARIATION_DATE);
-        ate.setInputType(android.text.InputType.TYPE_CLASS_DATETIME | android.text.InputType.TYPE_DATETIME_VARIATION_DATE);
-        if (intervalo != null) { de.setText(FinanceUtils.dataVisivel(intervalo.inicio)); ate.setText(FinanceUtils.dataVisivel(intervalo.fim)); }
+        texto(panel, "Escolha um dia no calendário. Para um intervalo, escolha também a data final.", 15);
+        String[] dates={intervalo==null?null:intervalo.inicio,intervalo==null || intervalo.inicio.equals(intervalo.fim)?null:intervalo.fim};
+        Button de=secundario(panel,"",null); de.setId(R.id.filtro_inicio);
+        Button ate=secundario(panel,"",null); ate.setId(R.id.filtro_fim);
+        Runnable labels=() -> {de.setText(dates[0]==null?"Selecionar data inicial":"De: "+FinanceUtils.dataVisivel(dates[0])); ate.setText(dates[1]==null?"Adicionar data final (opcional)":"Até: "+FinanceUtils.dataVisivel(dates[1]));};
+        labels.run();
+        de.setOnClickListener(v -> escolherDia(dates[0],iso -> {dates[0]=iso; labels.run();}));
+        ate.setOnClickListener(v -> escolherDia(dates[1]==null?dates[0]:dates[1],iso -> {dates[1]=iso; labels.run();}));
+        secundario(panel,"Usar só a data inicial",v -> {dates[1]=null; labels.run();});
+        TextView error=texto(panel,"",14); error.setTextColor(0xffa93f35);
+        error.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Pesquisar por data").setView(panel)
                 .setNegativeButton("Cancelar", null).setNeutralButton("Limpar filtro", (d, w) -> {
                     intervalo = null; mes = null; atualizarPeriodo(); filtrar();
                 }).setPositiveButton("Aplicar", null).create();
         dialog.setOnShowListener(d -> dialog.getButton(-1).setOnClickListener(v -> {
-            try { DateRange.iso(de.getText().toString()); }
-            catch (IllegalArgumentException ex) { de.setError(ex.getMessage()); return; }
-            try { intervalo = new DateRange(de.getText().toString(), ate.getText().toString()); }
-            catch (IllegalArgumentException ex) { ate.setError(ex.getMessage()); return; }
+            if(dates[0]==null) {error.setText("Escolha a data inicial no calendário"); return;}
+            try { intervalo = new DateRange(FinanceUtils.dataVisivel(dates[0]),dates[1]==null?"":FinanceUtils.dataVisivel(dates[1])); }
+            catch (IllegalArgumentException ex) { error.setText(ex.getMessage()); return; }
             mes = null; atualizarPeriodo(); filtrar(); dialog.dismiss();
         }));
         dialog.show();
     }
+    private void escolherDia(String initial,java.util.function.Consumer<String> chosen) {
+        Calendar cal=Calendar.getInstance(); if(initial!=null) cal.setTime(Planning.strictDate(initial));
+        new android.app.DatePickerDialog(this,(picker,year,month,day) -> chosen.accept(String.format(Locale.ROOT,"%04d-%02d-%02d",year,month+1,day)),cal.get(Calendar.YEAR),cal.get(Calendar.MONTH),cal.get(Calendar.DAY_OF_MONTH)).show();
+    }
     @Override protected void onSaveInstanceState(Bundle out) {
         out.putString("mes", mes);
+        out.putString("contaFiltro",contaFiltro);
         if (intervalo != null) { out.putString("inicio", FinanceUtils.dataVisivel(intervalo.inicio)); out.putString("fim", FinanceUtils.dataVisivel(intervalo.fim)); }
         super.onSaveInstanceState(out);
     }
@@ -138,7 +189,7 @@ public class LancamentosActivity extends BaseActivity {
         state.items = new ArrayList<>(visiveis);
         state.period = intervalo != null ? "Período: " + FinanceUtils.dataVisivel(intervalo.inicio) + " a " + FinanceUtils.dataVisivel(intervalo.fim)
                 : mes != null ? "Período: " + mes.substring(5) + "/" + mes.substring(0, 4) : "Período: todo o histórico";
-        state.filters = (contaSelecionada == null ? "" : "Conta: " + contaSelecionada + " | ") + "Tipo: " + tipo.getSelectedItem() + (busca.getText().toString().trim().isEmpty() ? "" : " | Busca: " + busca.getText().toString().trim());
+        state.filters = (contaEfetiva() == null ? "" : "Conta: " + contaEfetiva() + " | ") + "Tipo: " + tipo.getSelectedItem() + (busca.getText().toString().trim().isEmpty() ? "" : " | Busca: " + busca.getText().toString().trim());
         arquivo.launch("financeflow-" + FinanceUtils.hoje() + ".pdf");
     }
     private void exportar(Uri uri) {
