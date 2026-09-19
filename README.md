@@ -42,10 +42,10 @@ Testes locais incluem parsing monetário, soma em centavos, paginação e render
 
 ## Dados e manutenção
 
-- O banco `financeFlow_db` está na versão 4. As migrações preservam o histórico e corrigem os campos trocados pelo formulário antigo quando o padrão conhecido é reconhecido.
+- O banco `financeFlow_db` está na versão 5. As migrações preservam o histórico e corrigem os campos trocados pelo formulário antigo quando o padrão conhecido é reconhecido. A versão 5 adiciona recibos de sincronização do relógio.
 - Backups JSON v2 incluem contas e origens ainda sem lançamentos. Backups v1 continuam aceitos, recuperando os cadastros a partir das movimentações. A restauração substitui tanto os lançamentos como os cadastros.
 - Datas são gravadas como `yyyy-MM-dd` e exibidas como `dd/MM/yyyy`.
 - O campo `valor` permanece `double` por compatibilidade com o banco existente; cálculos de saldo convertem cada valor em centavos inteiros.
-- Os antigos campos `origem` e `syncStatus` permanecem por compatibilidade. Não existe sincronização com relógio, bancos ou nuvem própria.
+- O módulo Wear OS sincroniza saldo mensal e lançamentos rápidos com o celular. Veja [instalação e uso no Galaxy Watch 7](WATCH.md). Não existe integração com bancos ou nuvem própria.
 - As telas são construídas em Java por `BaseActivity`; o item do histórico usa `item_lancamento.xml`.
 - Dados demonstrativos não são inseridos no banco de produção.

@@ -14,6 +14,12 @@ import java.util.List;
 
 @Dao
 public interface  LancamentoDao {
+    @Query("SELECT COUNT(*) FROM wear_receipts WHERE id = :id")
+    int wearReceipt(String id);
+    @Insert
+    void registrarWearReceipt(com.lucas.financeflow.data.model.WearReceipt receipt);
+    @Query("SELECT COUNT(*) FROM cadastros WHERE tipo = 'CONTA' AND nome = :nome COLLATE NOCASE")
+    int contaExiste(String nome);
     @Query("SELECT * FROM cadastros ORDER BY tipo, nome COLLATE NOCASE")
     LiveData<List<Cadastro>> cadastros();
 

@@ -32,9 +32,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     testOptions { unitTests.isIncludeAndroidResources = true }
+    sourceSets["main"].java.srcDir("../shared/src/main/java")
 }
 
 dependencies {
+    implementation("com.google.android.gms:play-services-wearable:20.0.1")
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)

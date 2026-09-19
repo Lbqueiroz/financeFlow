@@ -8,7 +8,7 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import com.lucas.financeflow.data.model.Lancamento;
 
-@Database(entities = {Lancamento.class, com.lucas.financeflow.data.model.Cadastro.class}, version = 4, exportSchema = false)
+@Database(entities = {Lancamento.class, com.lucas.financeflow.data.model.Cadastro.class, com.lucas.financeflow.data.model.WearReceipt.class}, version = 5, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
     private static AppDatabase instance;
     public abstract LancamentoDao lancamentoDao();
@@ -34,7 +34,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(context.getApplicationContext(), AppDatabase.class, "financeFlow_db")
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build();
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build();
         }
         return instance;
     }
@@ -43,6 +43,11 @@ public abstract class AppDatabase extends RoomDatabase {
             db.execSQL("CREATE TABLE IF NOT EXISTS cadastros (tipo TEXT NOT NULL, nome TEXT COLLATE NOCASE NOT NULL, PRIMARY KEY(tipo, nome))");
             db.execSQL("INSERT OR IGNORE INTO cadastros SELECT 'CONTA', trim(conta) FROM lancamentos WHERE conta IS NOT NULL AND trim(conta) != ''");
             db.execSQL("INSERT OR IGNORE INTO cadastros SELECT 'ORIGEM', trim(origemDestino) FROM lancamentos WHERE origemDestino IS NOT NULL AND trim(origemDestino) != ''");
+        }
+    };
+    public static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override public void migrate(SupportSQLiteDatabase db) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS wear_receipts (id TEXT NOT NULL PRIMARY KEY)");
         }
     };
 }
